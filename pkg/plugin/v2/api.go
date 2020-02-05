@@ -53,7 +53,10 @@ type createAPIPlugin struct {
 	runMake bool
 }
 
-var _ plugin.CreateAPI = &createAPIPlugin{}
+var (
+	_ plugin.CreateAPI   = &createAPIPlugin{}
+	_ cmdutil.RunOptions = &createAPIPlugin{}
+)
 
 func (p createAPIPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Scaffold a Kubernetes API by creating a Resource definition and / or a Controller.

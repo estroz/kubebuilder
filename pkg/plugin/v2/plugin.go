@@ -20,35 +20,38 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
+var (
+	_ plugin.Base                      = Plugin{}
+	_ plugin.InitPluginGetter          = Plugin{}
+	_ plugin.CreateAPIPluginGetter     = Plugin{}
+	_ plugin.CreateWebhookPluginGetter = Plugin{}
+)
+
 type Plugin struct {
 	initPlugin
 	createAPIPlugin
 	createWebhookPlugin
 }
 
-var _ plugin.Base = Plugin{}
-
 func (Plugin) Name() string {
 	return "go"
 }
 
 func (Plugin) Version() string {
-	return "2"
+	return "v2.0.0"
 }
 
-var _ plugin.InitPluginGetter = Plugin{}
+func (Plugin) SupportedProjectVersions() []string {
+	return []string{"2"}
+}
 
 func (p Plugin) GetInitPlugin() plugin.Init {
 	return &p.initPlugin
 }
 
-var _ plugin.CreateAPIPluginGetter = Plugin{}
-
 func (p Plugin) GetCreateAPIPlugin() plugin.CreateAPI {
 	return &p.createAPIPlugin
 }
-
-var _ plugin.CreateWebhookPluginGetter = Plugin{}
 
 func (p Plugin) GetCreateWebhookPlugin() plugin.CreateWebhook {
 	return &p.createWebhookPlugin

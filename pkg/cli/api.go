@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,14 +24,14 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
-func (c cli) newCreateWebhookCmd() *cobra.Command {
+func (c cli) newCreateAPICmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "webhook",
-		Short: "Scaffold a webhook for an API resource",
-		Long: `Scaffold a webhook for an API resource.
+		Use:   "api",
+		Short: "Scaffold a Kubernetes API",
+		Long: `Scaffold a Kubernetes API.
 `,
 		RunE: errCmdFunc(
-			fmt.Errorf("webhook subcommand requires an existing project"),
+			fmt.Errorf("api subcommand requires an existing project"),
 		),
 	}
 
@@ -44,23 +44,23 @@ project.
 	}
 
 	// Lookup the plugin for projectVersion and bind it to the command.
-	c.bindCreateWebhook(cmd)
+	c.bindCreateAPI(cmd)
 	return cmd
 }
 
-func (c cli) bindCreateWebhook(cmd *cobra.Command) { // nolint:dupl
+func (c cli) bindCreateAPI(cmd *cobra.Command) { // nolint:dupl
 	versionedPlugins, err := c.getVersionedPlugins()
 	if err != nil {
 		cmdErr(cmd, err)
 		return
 	}
-	var getter plugin.CreateWebhookPluginGetter
+	var getter plugin.CreateAPIPluginGetter
 	var hasGetter bool
 	for _, p := range versionedPlugins {
-		tmpGetter, isGetter := p.(plugin.CreateWebhookPluginGetter)
+		tmpGetter, isGetter := p.(plugin.CreateAPIPluginGetter)
 		if isGetter {
 			if hasGetter {
-				err := fmt.Errorf("duplicate webhook creation plugins for project version %q: %s, %s",
+				err := fmt.Errorf("duplicate API creation plugins for project version %q: %s, %s",
 					c.projectVersion, getter.Name(), p.Name())
 				cmdErr(cmd, err)
 				return
@@ -70,27 +70,27 @@ func (c cli) bindCreateWebhook(cmd *cobra.Command) { // nolint:dupl
 		}
 	}
 	if !hasGetter {
-		err := fmt.Errorf("project version %q does not support a webhook creation plugin",
+		err := fmt.Errorf("project version %q does not support an API creation plugin",
 			c.projectVersion)
 		cmdErr(cmd, err)
 		return
 	}
 
-	createWebhook := getter.GetCreateWebhookPlugin()
-	createWebhook.BindFlags(cmd.Flags())
+	createAPI := getter.GetCreateAPIPlugin()
+	createAPI.BindFlags(cmd.Flags())
 	// TODO: inject defaults.
 	ctx := plugin.Context{
 		CommandName: c.commandName,
 	}
-	createWebhook.UpdateContext(&ctx)
+	createAPI.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if !c.configured {
-			return fmt.Errorf("failed to create webhook because project is not initialized")
+			return fmt.Errorf("failed to create api because project is not initialized")
 		}
-		if err := createWebhook.Run(); err != nil {
-			return fmt.Errorf("failed to create webhook for project with version %q: %v",
+		if err := createAPI.Run(); err != nil {
+			return fmt.Errorf("failed to create api for project with version %q: %v",
 				c.projectVersion, err)
 		}
 		return nil

@@ -17,14 +17,13 @@ limitations under the License.
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
-	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/cli/internal"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
@@ -46,19 +45,29 @@ type Option func(*cli) error
 // cli defines the command line structure and interfaces that are used to
 // scaffold kubebuilder project files.
 type cli struct {
-	commandName    string
-	defProjVersion string
-	cmd            *cobra.Command
-	extraCommands  []*cobra.Command
-	plugins        map[string][]plugin.Base
+	// Base command name. Can be injected downstream.
+	commandName string
+	// Default project version. Used in CLI flag setup.
+	defaultProjectVersion string
+	// Project version to scaffold.
+	projectVersion string
+	// True if the project has config file.
+	configured bool
+
+	// Base command.
+	cmd *cobra.Command
+	// Commands injected by options.
+	extraCommands []*cobra.Command
+	// Plugins injected by options.
+	plugins map[string][]plugin.Base
 }
 
 // New creates a new cli instance.
 func New(opts ...Option) (CLI, error) {
 	c := &cli{
-		commandName:    "kubebuilder",
-		defProjVersion: internalconfig.DefaultVersion,
-		plugins:        map[string][]plugin.Base{},
+		commandName:           "kubebuilder",
+		defaultProjectVersion: config.DefaultVersion,
+		plugins:               map[string][]plugin.Base{},
 	}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
@@ -89,7 +98,7 @@ func WithCommandName(name string) Option {
 // version. Setting an unknown version will result in an error.
 func WithDefaultProjectVersion(version string) Option {
 	return func(c *cli) error {
-		c.defProjVersion = version
+		c.defaultProjectVersion = version
 		return nil
 	}
 }
@@ -98,11 +107,12 @@ func WithDefaultProjectVersion(version string) Option {
 func WithPlugins(plugins ...plugin.Base) Option {
 	return func(c *cli) error {
 		for _, p := range plugins {
-			ver := p.Version()
-			if _, ok := c.plugins[ver]; !ok {
-				c.plugins[ver] = []plugin.Base{}
+			for _, version := range p.SupportedProjectVersions() {
+				if _, ok := c.plugins[version]; !ok {
+					c.plugins[version] = []plugin.Base{}
+				}
+				c.plugins[version] = append(c.plugins[version], p)
 			}
-			c.plugins[ver] = append(c.plugins[ver], p)
 		}
 		return nil
 	}
@@ -119,26 +129,14 @@ func WithExtraCommands(cmds ...*cobra.Command) Option {
 
 // initialize initializes the cli.
 func (c *cli) initialize() error {
-	var projectVersion string
-	if internal.Configured() {
-		projectVersion, _ = getProjectVersion()
-	} else {
-		// If the project isn't configured, see if we can find the
-		// project version in a command line flag.
-		projectVersion, _ = c.getBaseFlags()
-	}
-
-	if projectVersion != "" {
-		ps, ok := c.plugins[projectVersion]
-		if !ok {
-			return fmt.Errorf("unknown project version %q", projectVersion)
+	// Configure the project version first for plugin retrieval in command
+	// constructors.
+	if c.configured = internal.Configured(); c.configured {
+		config, err := config.Read()
+		if err != nil {
+			log.Fatalf("failed to read config: %v", err)
 		}
-		for _, p := range ps {
-			if dp, ok := p.(plugin.Deprecated); ok {
-				fmt.Printf(noticeColor, fmt.Sprintf("[Deprecation Notice] %s\n\n",
-					dp.DeprecationWarning()))
-			}
-		}
+		c.projectVersion = config.Version
 	}
 
 	rootCmd := c.defaultCommand()
@@ -156,16 +154,43 @@ func (c *cli) initialize() error {
 	}
 
 	for _, cmd := range c.extraCommands {
-		for _, subc := range rootCmd.Commands() {
-			if cmd.Name() == subc.Name() {
+		for _, subCmd := range rootCmd.Commands() {
+			if cmd.Name() == subCmd.Name() {
 				return fmt.Errorf("command %q already exists", cmd.Name())
 			}
 		}
 		rootCmd.AddCommand(cmd)
 	}
 
+	// Write deprecation notices after all commands have been constructed.
+	if c.projectVersion != "" {
+		versionedPlugins, err := c.getVersionedPlugins()
+		if err != nil {
+			return err
+		}
+		for _, p := range versionedPlugins {
+			if d, isDeprecated := p.(plugin.Deprecated); isDeprecated {
+				fmt.Printf(noticeColor, fmt.Sprintf("[Deprecation Notice] %s\n\n",
+					d.DeprecationWarning()))
+			}
+		}
+	}
+
 	c.cmd = rootCmd
 	return nil
+}
+
+// getVersionedPlugins returns all plugins for the project version that c is
+// configured with.
+func (c cli) getVersionedPlugins() ([]plugin.Base, error) {
+	if c.projectVersion == "" {
+		return nil, errors.New("project version not set")
+	}
+	versionedPlugins, versionFound := c.plugins[c.projectVersion]
+	if !versionFound {
+		return nil, fmt.Errorf("unknown project version %q", c.projectVersion)
+	}
+	return versionedPlugins, nil
 }
 
 // defaultCommand results the root command without its subcommands.
@@ -234,40 +259,4 @@ func errCmdFunc(err error) func(*cobra.Command, []string) error {
 	return func(*cobra.Command, []string) error {
 		return err
 	}
-}
-
-// getProjectVersion tries to load PROJECT file and returns if the file exist
-// and the version string
-func getProjectVersion() (string, bool) {
-	config, err := internalconfig.Read()
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", false
-		}
-		log.Fatalf("failed to read config: %v", err)
-	}
-	return config.Version, true
-}
-
-// getBaseFlags parses the command line arguments, looking for --project-version
-// and help. If an error occurs or only --help is set, getBaseFlags returns an
-// empty string and true. Otherwise, getBaseFlags returns the project version
-// and false.
-func (c cli) getBaseFlags() (string, bool) {
-	fs := pflag.NewFlagSet("base", pflag.ExitOnError)
-	fs.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
-
-	var (
-		projectVersion string
-		help           bool
-	)
-	fs.StringVar(&projectVersion, "project-version", c.defProjVersion, "project version")
-	fs.BoolVarP(&help, "help", "h", false, "print help")
-
-	err := fs.Parse(os.Args[1:])
-	doHelp := err != nil || help && !fs.Lookup("project-version").Changed
-	if doHelp {
-		return "", true
-	}
-	return projectVersion, false
 }

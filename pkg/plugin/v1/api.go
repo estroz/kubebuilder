@@ -46,14 +46,14 @@ type createAPIPlugin struct {
 	doResource     bool
 	doController   bool
 
-	// force indicates that the resource should be created even if it already exists
-	force bool
-
 	// runMake indicates whether to run make or not after scaffolding APIs
 	runMake bool
 }
 
-var _ plugin.CreateAPI = &createAPIPlugin{}
+var (
+	_ plugin.CreateAPI   = &createAPIPlugin{}
+	_ cmdutil.RunOptions = &createAPIPlugin{}
+)
 
 func (p createAPIPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Scaffold a Kubernetes API by creating a Resource definition and / or a Controller.
@@ -99,8 +99,6 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 			"generates an API following an extension pattern (addon)")
 	}
 
-	fs.BoolVar(&p.force, "force", false,
-		"attempt to create resource even if it already exists")
 	p.resource = &resource.Options{}
 	fs.StringVar(&p.resource.Kind, "kind", "", "resource Kind")
 	fs.StringVar(&p.resource.Group, "group", "", "resource Group")
@@ -122,7 +120,7 @@ func (p *createAPIPlugin) LoadConfig() (*config.Config, error) {
 	return projectConfig, err
 }
 
-func (p *createAPIPlugin) Validate(c *config.Config) error {
+func (p *createAPIPlugin) Validate(_ *config.Config) error {
 	if err := p.resource.Validate(); err != nil {
 		return err
 	}

@@ -30,6 +30,7 @@ type Base interface {
 	// Version returns the project version that this plugin implements.
 	// For example, Kubebuilder's Go v2 plugin implementation would return 2.
 	Version() string
+	SupportedProjectVersions() []string
 }
 
 func Key(p Base) string {

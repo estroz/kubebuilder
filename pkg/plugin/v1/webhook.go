@@ -39,7 +39,10 @@ type createWebhookPlugin struct {
 	doMake      bool
 }
 
-var _ plugin.CreateWebhook = &createWebhookPlugin{}
+var (
+	_ plugin.CreateWebhook = &createWebhookPlugin{}
+	_ cmdutil.RunOptions   = &createAPIPlugin{}
+)
 
 func (p createWebhookPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Scaffold a webhook server if there is no existing server.
@@ -79,7 +82,7 @@ func (p *createWebhookPlugin) LoadConfig() (*config.Config, error) {
 	return projectConfig, err
 }
 
-func (p *createWebhookPlugin) Validate(c *config.Config) error {
+func (p *createWebhookPlugin) Validate(_ *config.Config) error {
 	if err := p.resource.Validate(); err != nil {
 		return err
 	}

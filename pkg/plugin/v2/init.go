@@ -50,7 +50,10 @@ type initPlugin struct { // nolint:maligned
 	skipGoVersionCheck bool
 }
 
-var _ plugin.Init = &initPlugin{}
+var (
+	_ plugin.Init        = &initPlugin{}
+	_ cmdutil.RunOptions = &initPlugin{}
+)
 
 func (p initPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Initialize a new project including vendor/ directory and Go package directories.
@@ -97,7 +100,9 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.owner, "owner", "", "owner to add to the copyright")
 
 	// project args
-	p.config = config.New(config.DefaultPath)
+	if p.config == nil {
+		p.config = config.New(config.DefaultPath)
+	}
 	fs.StringVar(&p.config.Repo, "repo", "", "name to use for go module (e.g., github.com/user/repo), "+
 		"defaults to the go package of the current working directory.")
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
@@ -108,9 +113,6 @@ func (p *initPlugin) Run() error {
 }
 
 func (p *initPlugin) SetVersion(v string) {
-	if p.config == nil {
-		p.config = config.New(config.DefaultPath)
-	}
 	p.config.Version = v
 }
 
@@ -141,7 +143,7 @@ func (p *initPlugin) Validate(c *config.Config) error {
 		return fmt.Errorf("project name (%s) is invalid: %v", projectName, err)
 	}
 
-	// Try to guess repository if flag is not set
+	// Try to guess repository if flag is not set.
 	if c.Repo == "" {
 		repoPath, err := internal.FindCurrentRepo()
 		if err != nil {
@@ -157,25 +159,26 @@ func (p *initPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error
 	return scaffold.NewInitScaffolder(c, p.license, p.owner), nil
 }
 
-func (p *initPlugin) PostScaffold(c *config.Config) error {
-	if (!p.depFlag.Changed && p.fetchDeps) || (p.depFlag.Changed && p.dep) {
-		// Ensure that we are pinning controller-runtime version
-		// xref: https://github.com/kubernetes-sigs/kubebuilder/issues/997
-		err := internal.RunCmd("Get controller runtime", "go", "get",
-			"sigs.k8s.io/controller-runtime@"+scaffold.ControllerRuntimeVersion)
-		if err != nil {
-			return err
-		}
-
-		err = internal.RunCmd("Update go.mod", "go", "mod", "tidy")
-		if err != nil {
-			return err
-		}
-	} else {
+func (p *initPlugin) PostScaffold(_ *config.Config) error {
+	if (p.depFlag.Changed && !p.dep) || (!p.depFlag.Changed && !p.fetchDeps) {
 		fmt.Println("Skipping fetching dependencies.")
+		return nil
 	}
 
-	err := internal.RunCmd("Running make", "make")
+	// Ensure that we are pinning controller-runtime version
+	// xref: https://github.com/kubernetes-sigs/kubebuilder/issues/997
+	err := internal.RunCmd("Get controller runtime", "go", "get",
+		"sigs.k8s.io/controller-runtime@"+scaffold.ControllerRuntimeVersion)
+	if err != nil {
+		return err
+	}
+
+	err = internal.RunCmd("Update go.mod", "go", "mod", "tidy")
+	if err != nil {
+		return err
+	}
+
+	err = internal.RunCmd("Running make", "make")
 	if err != nil {
 		return err
 	}

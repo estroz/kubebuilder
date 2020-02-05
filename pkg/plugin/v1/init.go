@@ -52,7 +52,10 @@ type initPlugin struct { // nolint:maligned
 	skipGoVersionCheck bool
 }
 
-var _ plugin.Init = &initPlugin{}
+var (
+	_ plugin.Init        = &initPlugin{}
+	_ cmdutil.RunOptions = &initPlugin{}
+)
 
 func (p initPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Initialize a new project including vendor/ directory and Go package directories.
@@ -99,7 +102,9 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.owner, "owner", "", "owner to add to the copyright")
 
 	// project args
-	p.config = config.New(config.DefaultPath)
+	if p.config == nil {
+		p.config = config.New(config.DefaultPath)
+	}
 	fs.StringVar(&p.config.Repo, "repo", "", "name to use for go module (e.g., github.com/user/repo), "+
 		"defaults to the go package of the current working directory.")
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
@@ -110,9 +115,6 @@ func (p *initPlugin) Run() error {
 }
 
 func (p *initPlugin) SetVersion(v string) {
-	if p.config == nil {
-		p.config = config.New(config.DefaultPath)
-	}
 	p.config.Version = v
 }
 
@@ -164,7 +166,7 @@ func (p *initPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error
 	return scaffold.NewInitScaffolder(c, p.license, p.owner), nil
 }
 
-func (p *initPlugin) PostScaffold(c *config.Config) error {
+func (p *initPlugin) PostScaffold(_ *config.Config) error {
 	if !p.depFlag.Changed {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Println("Run `dep ensure` to fetch dependencies (Recommended) [y/n]?")

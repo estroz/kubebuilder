@@ -37,7 +37,10 @@ type createWebhookPlugin struct {
 	conversion bool
 }
 
-var _ plugin.CreateWebhook = &createWebhookPlugin{}
+var (
+	_ plugin.CreateWebhook = &createWebhookPlugin{}
+	_ cmdutil.RunOptions   = &createAPIPlugin{}
+)
 
 func (p createWebhookPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Scaffold a webhook for an API resource. You can choose to scaffold defaulting,
@@ -79,7 +82,7 @@ func (p *createWebhookPlugin) LoadConfig() (*config.Config, error) {
 	return projectConfig, err
 }
 
-func (p *createWebhookPlugin) Validate(c *config.Config) error {
+func (p *createWebhookPlugin) Validate(_ *config.Config) error {
 	if err := p.resource.Validate(); err != nil {
 		return err
 	}
@@ -95,7 +98,6 @@ func (p *createWebhookPlugin) Validate(c *config.Config) error {
 func (p *createWebhookPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
 	// Create the actual resource from the resource options
 	res := p.resource.NewResource(&c.Config, false)
-
 	return scaffold.NewV2WebhookScaffolder(&c.Config, res, p.defaulting, p.validation, p.conversion), nil
 }
 

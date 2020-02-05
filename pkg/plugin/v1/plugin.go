@@ -20,41 +20,43 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
+var (
+	_ plugin.Base                      = Plugin{}
+	_ plugin.InitPluginGetter          = Plugin{}
+	_ plugin.CreateAPIPluginGetter     = Plugin{}
+	_ plugin.CreateWebhookPluginGetter = Plugin{}
+	_ plugin.Deprecated                = Plugin{}
+)
+
 type Plugin struct {
 	initPlugin
 	createAPIPlugin
 	createWebhookPlugin
 }
 
-var _ plugin.Base = Plugin{}
-
 func (Plugin) Name() string {
 	return "go"
 }
 
 func (Plugin) Version() string {
-	return "1"
+	return "v1.0.0"
 }
 
-var _ plugin.InitPluginGetter = Plugin{}
+func (Plugin) SupportedProjectVersions() []string {
+	return []string{"1"}
+}
 
 func (p Plugin) GetInitPlugin() plugin.Init {
 	return &p.initPlugin
 }
 
-var _ plugin.CreateAPIPluginGetter = Plugin{}
-
 func (p Plugin) GetCreateAPIPlugin() plugin.CreateAPI {
 	return &p.createAPIPlugin
 }
 
-var _ plugin.CreateWebhookPluginGetter = Plugin{}
-
 func (p Plugin) GetCreateWebhookPlugin() plugin.CreateWebhook {
 	return &p.createWebhookPlugin
 }
-
-var _ plugin.Deprecated = Plugin{}
 
 func (Plugin) DeprecationWarning() string {
 	return `The v1 projects are deprecated and will not be supported beyond Feb 1, 2020.
