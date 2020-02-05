@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
 )
@@ -49,7 +50,7 @@ func newEditCmd() *cobra.Command {
 	# Disable the multigroup layout
 	kubebuilder edit --multigroup=false`,
 		Run: func(_ *cobra.Command, _ []string) {
-			if err := run(options); err != nil {
+			if err := cmdutil.Run(options); err != nil {
 				log.Fatal(editError{err})
 			}
 		},
@@ -60,8 +61,6 @@ func newEditCmd() *cobra.Command {
 	return cmd
 }
 
-var _ commandOptions = &editOptions{}
-
 type editOptions struct {
 	multigroup bool
 }
@@ -70,7 +69,7 @@ func (o *editOptions) bindFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&o.multigroup, "multigroup", false, "enable or disable multigroup layout")
 }
 
-func (o *editOptions) loadConfig() (*config.Config, error) {
+func (o *editOptions) LoadConfig() (*config.Config, error) {
 	projectConfig, err := config.Load()
 	if os.IsNotExist(err) {
 		return nil, errors.New("unable to find configuration file, project must be initialized")
@@ -79,7 +78,7 @@ func (o *editOptions) loadConfig() (*config.Config, error) {
 	return projectConfig, err
 }
 
-func (o *editOptions) validate(c *config.Config) error {
+func (o *editOptions) Validate(c *config.Config) error {
 	if !c.IsV2() {
 		if c.MultiGroup {
 			return fmt.Errorf("multiple group support can't be enabled for version %s", c.Version)
@@ -89,10 +88,10 @@ func (o *editOptions) validate(c *config.Config) error {
 	return nil
 }
 
-func (o *editOptions) scaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
+func (o *editOptions) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
 	return scaffold.NewEditScaffolder(c, o.multigroup), nil
 }
 
-func (o *editOptions) postScaffold(_ *config.Config) error {
+func (o *editOptions) PostScaffold(_ *config.Config) error {
 	return nil
 }
