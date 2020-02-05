@@ -14,16 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package cli
 
 import (
 	"github.com/spf13/cobra"
 )
 
-func newCreateCmd() *cobra.Command {
-	return &cobra.Command{
+func (c *cli) newCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Scaffold a Kubernetes API or webhook.",
+		Short: "Scaffold a Kubernetes API or webhook",
 		Long:  `Scaffold a Kubernetes API or webhook.`,
 	}
+	return cmd
 }
