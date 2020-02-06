@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cli
+package cli // nolint:dupl
 
 import (
 	"fmt"
@@ -48,7 +48,7 @@ project.
 	return cmd
 }
 
-func (c cli) bindCreateAPI(cmd *cobra.Command) { // nolint:dupl
+func (c cli) bindCreateAPI(cmd *cobra.Command) {
 	versionedPlugins, err := c.getVersionedPlugins()
 	if err != nil {
 		cmdErr(cmd, err)
