@@ -31,7 +31,8 @@ func (c *cli) newAlphaCmd() *cobra.Command {
 		Long:  `Command group for commands which are either experimental or in early stages of development`,
 		Example: fmt.Sprintf(`
 # scaffolds webhook server
-%s alpha webhook <params>`, c.commandName),
+%s alpha webhook <params>`,
+			c.commandName),
 	}
 	return cmd
 }

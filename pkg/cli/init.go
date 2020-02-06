@@ -67,7 +67,8 @@ func (c cli) getInitHelpExamples() string {
 		rendered := fmt.Sprintf(`  # Help for initializing a project with version %s
   %s init --project-version=%s -h
 
-`, version, c.commandName, version)
+`,
+			version, c.commandName, version)
 		sb.WriteString(rendered)
 	}
 	return strings.TrimSuffix(sb.String(), "\n\n")

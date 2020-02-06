@@ -24,12 +24,19 @@ import (
 )
 
 type Base interface {
-	// Name returns a name defining the plugin type.
-	// For example, Kubebuilder's plugins would return "go".
+	// Name returns a DNS1123 label string defining the plugin type.
+	// For example, Kubebuilder's main plugin would return "go".
+	//
+	// TODO: fully-qualified automatic append and comparison.
 	Name() string
-	// Version returns the project version that this plugin implements.
-	// For example, Kubebuilder's Go v2 plugin implementation would return 2.
+	// Version returns the plugin's semantic version, ex. "v1.2.3".
+	//
+	// Note: this version is different from config version.
+	//
+	// TODO: version format enforcement.
 	Version() string
+	// SupportedProjectVersions lists all project configuration versions this
+	// plugin supports, ex. []string{"2", "3"}. The returned slice cannot be empty.
 	SupportedProjectVersions() []string
 }
 

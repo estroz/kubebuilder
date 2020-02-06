@@ -246,7 +246,8 @@ scaffold a Controller for an existing Resource, select "n" for Resource. To only
 the schema for a Resource without writing a Controller, select "n" for Controller.
 
 After the scaffold is written, api will run make on the project.
-`, c.commandName, c.commandName),
+`,
+			c.commandName, c.commandName),
 		Example: fmt.Sprintf(`
   # Initialize your project
   %s init --domain example.com --license apache2 --owner "The Kubernetes authors"
@@ -265,7 +266,8 @@ After the scaffold is written, api will run make on the project.
 
   # Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
   make run
-`, c.commandName, c.commandName),
+`,
+			c.commandName, c.commandName),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cmd.Help(); err != nil {
