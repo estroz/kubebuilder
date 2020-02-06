@@ -19,7 +19,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"sigs.k8s.io/kubebuilder/pkg/cli/internal"
+	"sigs.k8s.io/kubebuilder/pkg/model/config"
 )
 
 func (c cli) newCreateCmd() *cobra.Command {
@@ -30,7 +30,7 @@ func (c cli) newCreateCmd() *cobra.Command {
 	}
 	cmd.AddCommand(c.newCreateAPICmd())
 
-	if !internal.ConfiguredAndV1() {
+	if !(c.configured && c.projectVersion == config.Version1) {
 		cmd.AddCommand(c.newCreateWebhookCmd())
 	}
 

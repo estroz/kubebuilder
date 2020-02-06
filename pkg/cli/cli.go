@@ -23,8 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"sigs.k8s.io/kubebuilder/internal/config"
+	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/cli/internal"
+	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
@@ -66,7 +67,7 @@ type cli struct {
 func New(opts ...Option) (CLI, error) {
 	c := &cli{
 		commandName:           "kubebuilder",
-		defaultProjectVersion: config.DefaultVersion,
+		defaultProjectVersion: internalconfig.DefaultVersion,
 		plugins:               map[string][]plugin.Base{},
 	}
 	for _, opt := range opts {
@@ -131,12 +132,12 @@ func WithExtraCommands(cmds ...*cobra.Command) Option {
 func (c *cli) initialize() error {
 	// Configure the project version first for plugin retrieval in command
 	// constructors.
-	if c.configured = internal.Configured(); c.configured {
-		config, err := config.Read()
+	if c.configured = internal.IsConfigured(); c.configured {
+		projectConfig, err := internalconfig.Read()
 		if err != nil {
 			log.Fatalf("failed to read config: %v", err)
 		}
-		c.projectVersion = config.Version
+		c.projectVersion = projectConfig.Version
 	}
 
 	rootCmd := c.defaultCommand()
@@ -146,7 +147,7 @@ func (c *cli) initialize() error {
 		c.newCreateCmd(),
 	)
 
-	if internal.ConfiguredAndV1() {
+	if c.configured && c.projectVersion == config.Version1 {
 		rootCmd.AddCommand(
 			c.newAlphaCmd(),
 			c.newVendorUpdateCmd(),

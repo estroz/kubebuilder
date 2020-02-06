@@ -17,27 +17,13 @@ limitations under the License.
 package internal
 
 import (
-	"log"
 	"os"
 
 	"sigs.k8s.io/kubebuilder/internal/config"
 )
 
-// ConfiguredAndV1 returns true if the project is already configured.
-func Configured() bool {
+// IsConfigured returns true if the project is already configured.
+func IsConfigured() bool {
 	_, err := config.Read()
 	return err == nil || os.IsExist(err)
-}
-
-// ConfiguredAndV1 returns true if the project is already configured and is v1.
-func ConfiguredAndV1() bool {
-	projectConfig, err := config.Read()
-	if os.IsNotExist(err) {
-		return false
-	}
-	if err != nil {
-		log.Fatalf("failed to read the configuration file: %v", err)
-	}
-
-	return projectConfig.IsV1()
 }
