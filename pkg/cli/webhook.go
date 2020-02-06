@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
-func (c cli) newCreateWebhookCmd() *cobra.Command {
+func (c *cli) newCreateWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "webhook",
 		Short: "Scaffold a webhook for an API resource",

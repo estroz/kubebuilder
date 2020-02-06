@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
-func (c cli) newCreateAPICmd() *cobra.Command {
+func (c *cli) newCreateAPICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "api",
 		Short: "Scaffold a Kubernetes API",

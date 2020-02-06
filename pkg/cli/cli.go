@@ -20,11 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
-	"sigs.k8s.io/kubebuilder/pkg/cli/internal"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
@@ -132,28 +132,20 @@ func WithExtraCommands(cmds ...*cobra.Command) Option {
 func (c *cli) initialize() error {
 	// Configure the project version first for plugin retrieval in command
 	// constructors.
-	if c.configured = internal.IsConfigured(); c.configured {
-		projectConfig, err := internalconfig.Read()
-		if err != nil {
-			log.Fatalf("failed to read config: %v", err)
-		}
+	projectConfig, err := internalconfig.Read()
+	if os.IsNotExist(err) {
+		c.configured = false
+		c.projectVersion = internalconfig.DefaultVersion
+	} else if err == nil {
+		c.configured = true
 		c.projectVersion = projectConfig.Version
+	} else {
+		return fmt.Errorf("failed to read config: %v", err)
 	}
 
-	rootCmd := c.defaultCommand()
+	rootCmd := c.buildRootCmd()
 
-	rootCmd.AddCommand(
-		c.newInitProjectCmd(),
-		c.newCreateCmd(),
-	)
-
-	if c.configured && c.projectVersion == config.Version1 {
-		rootCmd.AddCommand(
-			c.newAlphaCmd(),
-			c.newVendorUpdateCmd(),
-		)
-	}
-
+	// Add extra commands injected by options.
 	for _, cmd := range c.extraCommands {
 		for _, subCmd := range rootCmd.Commands() {
 			if cmd.Name() == subCmd.Name() {
@@ -179,6 +171,46 @@ func (c *cli) initialize() error {
 
 	c.cmd = rootCmd
 	return nil
+}
+
+// buildRootCmd returns a root command with a subcommand tree reflecting the
+// current project's state.
+func (c cli) buildRootCmd() *cobra.Command {
+	configuredAndV1 := c.configured && c.projectVersion == config.Version1
+
+	rootCmd := c.defaultCommand()
+
+	// kubebuilder alpha
+	alphaCmd := c.newAlphaCmd()
+	// kubebuilder alpha webhook (v1 only)
+	if configuredAndV1 {
+		alphaCmd.AddCommand(c.newCreateWebhookCmd())
+	}
+	if alphaCmd.HasSubCommands() {
+		rootCmd.AddCommand(alphaCmd)
+	}
+
+	// kubebuilder create
+	createCmd := c.newCreateCmd()
+	// kubebuilder create api
+	createCmd.AddCommand(c.newCreateAPICmd())
+	// kubebuilder create webhook (!v1)
+	if !configuredAndV1 {
+		createCmd.AddCommand(c.newCreateWebhookCmd())
+	}
+	if createCmd.HasSubCommands() {
+		rootCmd.AddCommand(createCmd)
+	}
+
+	// kubebuilder update (v1 only)
+	if configuredAndV1 {
+		rootCmd.AddCommand(c.newUpdateCmd())
+	}
+
+	// kubebuilder init
+	rootCmd.AddCommand(c.newInitCmd())
+
+	return rootCmd
 }
 
 // getVersionedPlugins returns all plugins for the project version that c is

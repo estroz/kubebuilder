@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
-func (c *cli) newInitProjectCmd() *cobra.Command {
+func (c *cli) newInitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new project",

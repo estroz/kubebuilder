@@ -18,21 +18,13 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-
-	"sigs.k8s.io/kubebuilder/pkg/model/config"
 )
 
-func (c cli) newCreateCmd() *cobra.Command {
+func (c *cli) newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Scaffold a Kubernetes API or webhook",
 		Long:  `Scaffold a Kubernetes API or webhook.`,
 	}
-	cmd.AddCommand(c.newCreateAPICmd())
-
-	if !(c.configured && c.projectVersion == config.Version1) {
-		cmd.AddCommand(c.newCreateWebhookCmd())
-	}
-
 	return cmd
 }

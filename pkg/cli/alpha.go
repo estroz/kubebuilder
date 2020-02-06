@@ -24,7 +24,7 @@ import (
 
 // newAlphaCmd returns alpha subcommand which will be mounted
 // at the root command by the caller.
-func (c cli) newAlphaCmd() *cobra.Command {
+func (c *cli) newAlphaCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "alpha",
 		Short: "Expose commands which are in experimental or early stages of development",
@@ -33,9 +33,5 @@ func (c cli) newAlphaCmd() *cobra.Command {
 # scaffolds webhook server
 %s alpha webhook <params>`, c.commandName),
 	}
-
-	cmd.AddCommand(
-		c.newCreateWebhookCmd(),
-	)
 	return cmd
 }

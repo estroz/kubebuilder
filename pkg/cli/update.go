@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
 )
 
-func (c cli) newVendorUpdateCmd() *cobra.Command {
+func (c *cli) newUpdateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update",
 		Short: "Update vendor dependencies",
