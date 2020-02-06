@@ -85,14 +85,5 @@ func (c cli) bindCreateAPI(cmd *cobra.Command) {
 	createAPI.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if !c.configured {
-			return fmt.Errorf("failed to create api because project is not initialized")
-		}
-		if err := createAPI.Run(); err != nil {
-			return fmt.Errorf("failed to create api for project with version %q: %v",
-				c.projectVersion, err)
-		}
-		return nil
-	}
+	cmd.RunE = runECmdFunc(createAPI, fmt.Sprintf("failed to create api for project with version %q", c.projectVersion))
 }

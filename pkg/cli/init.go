@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
-func (c cli) newInitProjectCmd() *cobra.Command {
+func (c *cli) newInitProjectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new project",
@@ -145,14 +145,5 @@ func (c cli) bindInit(cmd *cobra.Command) {
 	init.SetVersion(c.projectVersion)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if c.configured {
-			return fmt.Errorf("failed to initialize project because project is already initialized")
-		}
-		if err := init.Run(); err != nil {
-			return fmt.Errorf("failed to initialize project with version %q: %v",
-				c.projectVersion, err)
-		}
-		return nil
-	}
+	cmd.RunE = runECmdFunc(init, fmt.Sprintf("failed to initialize project with version %q", c.projectVersion))
 }

@@ -261,3 +261,13 @@ func errCmdFunc(err error) func(*cobra.Command, []string) error {
 		return err
 	}
 }
+
+// runECmdFunc returns a cobra RunE function that runs gsub and returns its value.
+func runECmdFunc(gsub plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
+	return func(*cobra.Command, []string) error {
+		if err := gsub.Run(); err != nil {
+			return fmt.Errorf("%s: %v", msg, err)
+		}
+		return nil
+	}
+}

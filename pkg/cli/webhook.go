@@ -85,14 +85,6 @@ func (c cli) bindCreateWebhook(cmd *cobra.Command) {
 	createWebhook.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if !c.configured {
-			return fmt.Errorf("failed to create webhook because project is not initialized")
-		}
-		if err := createWebhook.Run(); err != nil {
-			return fmt.Errorf("failed to create webhook for project with version %q: %v",
-				c.projectVersion, err)
-		}
-		return nil
-	}
+	cmd.RunE = runECmdFunc(createWebhook,
+		fmt.Sprintf("failed to create webhook for project with version %q", c.projectVersion))
 }
