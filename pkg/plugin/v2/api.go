@@ -109,8 +109,6 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.resource.Group, "group", "", "resource Group")
 	fs.StringVar(&p.resource.Version, "version", "", "resource Version")
 	fs.BoolVar(&p.resource.Namespaced, "namespaced", true, "resource is namespaced")
-	fs.BoolVar(&p.resource.CreateExampleReconcileBody, "example", true,
-		"if true an example reconcile body should be written while scaffolding a resource.")
 }
 
 func (p *createAPIPlugin) Run() error {

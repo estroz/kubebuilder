@@ -17,10 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -61,6 +59,8 @@ func newEditCmd() *cobra.Command {
 	return cmd
 }
 
+var _ cmdutil.RunOptions = &editOptions{}
+
 type editOptions struct {
 	multigroup bool
 }
@@ -70,12 +70,7 @@ func (o *editOptions) bindFlags(cmd *cobra.Command) {
 }
 
 func (o *editOptions) LoadConfig() (*config.Config, error) {
-	projectConfig, err := config.Load()
-	if os.IsNotExist(err) {
-		return nil, errors.New("unable to find configuration file, project must be initialized")
-	}
-
-	return projectConfig, err
+	return loadExistingConfig()
 }
 
 func (o *editOptions) Validate(c *config.Config) error {

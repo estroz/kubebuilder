@@ -202,11 +202,6 @@ func (c cli) buildRootCmd() *cobra.Command {
 		rootCmd.AddCommand(createCmd)
 	}
 
-	// kubebuilder update (v1 only)
-	if configuredAndV1 {
-		rootCmd.AddCommand(c.newUpdateCmd())
-	}
-
 	// kubebuilder init
 	rootCmd.AddCommand(c.newInitCmd())
 
