@@ -21,6 +21,8 @@ import (
 	"regexp"
 )
 
+// TODO: remove this file once plugin name validation is implemented in pkg/cli.
+
 // The following code came from "k8s.io/apimachinery/pkg/util/validation/validation.go"
 // If be required the usage of more funcs from this then please replace it for the import
 // ---------------------------------------
