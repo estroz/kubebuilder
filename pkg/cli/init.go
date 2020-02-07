@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,15 +30,13 @@ import (
 )
 
 func (c *cli) newInitCmd() *cobra.Command {
+	ctx := c.newInitContext()
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Initialize a new project",
-		Long: `Initialize a new project.
-
-For further help about a specific project version, set --project-version.
-`,
+		Use:     "init",
+		Short:   "Initialize a new project",
+		Long:    ctx.Description,
+		Example: ctx.Examples,
 		Run:     func(cmd *cobra.Command, args []string) {},
-		Example: c.getInitHelpExamples(),
 	}
 
 	// Register --project-version on the dynamically created command
@@ -57,8 +55,19 @@ For further help about a specific project version, set --project-version.
 	}
 
 	// Lookup the plugin for projectVersion and bind it to the command.
-	c.bindInit(cmd)
+	c.bindInit(ctx, cmd)
 	return cmd
+}
+
+func (c cli) newInitContext() plugin.Context {
+	return plugin.Context{
+		CommandName: c.commandName,
+		Description: `Initialize a new project.
+
+For further help about a specific project version, set --project-version.
+`,
+		Examples: c.getInitHelpExamples(),
+	}
 }
 
 func (c cli) getInitHelpExamples() string {
@@ -113,7 +122,7 @@ func (c cli) getBaseFlags() (string, bool) {
 	return projectVersion, false
 }
 
-func (c cli) bindInit(cmd *cobra.Command) {
+func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 	versionedPlugins, err := c.getVersionedPlugins()
 	if err != nil {
 		log.Fatal(err)
@@ -138,12 +147,8 @@ func (c cli) bindInit(cmd *cobra.Command) {
 
 	init := getter.GetInitPlugin()
 	init.BindFlags(cmd.Flags())
-	// TODO: inject defaults.
-	ctx := plugin.Context{
-		CommandName: c.commandName,
-	}
-	init.UpdateContext(&ctx)
 	init.SetVersion(c.projectVersion)
+	init.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
 	cmd.RunE = runECmdFunc(init, fmt.Sprintf("failed to initialize project with version %q", c.projectVersion))

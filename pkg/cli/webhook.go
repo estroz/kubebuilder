@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,30 +25,35 @@ import (
 )
 
 func (c *cli) newCreateWebhookCmd() *cobra.Command {
+	ctx := c.newWebhookContext()
 	cmd := &cobra.Command{
-		Use:   "webhook",
-		Short: "Scaffold a webhook for an API resource",
-		Long: `Scaffold a webhook for an API resource.
-`,
+		Use:     "webhook",
+		Short:   "Scaffold a webhook for an API resource",
+		Long:    ctx.Description,
+		Example: ctx.Examples,
 		RunE: errCmdFunc(
 			fmt.Errorf("webhook subcommand requires an existing project"),
 		),
 	}
 
-	if !c.configured {
-		msg := `For project-specific information, run this command in the root directory of a
-project.
-`
-		cmd.Long = fmt.Sprintf("%s\n%s", cmd.Long, msg)
-		return cmd
-	}
-
 	// Lookup the plugin for projectVersion and bind it to the command.
-	c.bindCreateWebhook(cmd)
+	c.bindCreateWebhook(ctx, cmd)
 	return cmd
 }
 
-func (c cli) bindCreateWebhook(cmd *cobra.Command) {
+func (c cli) newWebhookContext() plugin.Context {
+	ctx := plugin.Context{
+		CommandName: c.commandName,
+		Description: `Scaffold a webhook for an API resource.
+`,
+	}
+	if !c.configured {
+		ctx.Description = fmt.Sprintf("%s\n%s", ctx.Description, runInProjectRootMsg)
+	}
+	return ctx
+}
+
+func (c cli) bindCreateWebhook(ctx plugin.Context, cmd *cobra.Command) {
 	versionedPlugins, err := c.getVersionedPlugins()
 	if err != nil {
 		cmdErr(cmd, err)
@@ -78,10 +83,6 @@ func (c cli) bindCreateWebhook(cmd *cobra.Command) {
 
 	createWebhook := getter.GetCreateWebhookPlugin()
 	createWebhook.BindFlags(cmd.Flags())
-	// TODO: inject defaults.
-	ctx := plugin.Context{
-		CommandName: c.commandName,
-	}
 	createWebhook.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,11 +40,13 @@ type Base interface {
 	SupportedProjectVersions() []string
 }
 
+// Key returns a Base plugin's unique identifying string.
 func Key(p Base) string {
 	return path.Join(p.Name(), "v"+strings.TrimLeft(p.Version(), "v"))
 }
 
 type Deprecated interface {
+	// DeprecationWarning returns a string indicating a plugin is deprecated.
 	DeprecationWarning() string
 }
 

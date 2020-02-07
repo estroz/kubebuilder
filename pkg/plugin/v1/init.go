@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +74,8 @@ project will prompt the user to run 'dep ensure' after writing the project files
 `
 	ctx.Examples = fmt.Sprintf(`  # Scaffold a project using the apache2 license with "The Kubernetes authors" as owners
   %s init --project-version=1 --domain example.org --license apache2 --owner "The Kubernetes authors"
-`, ctx.CommandName)
+`,
+		ctx.CommandName)
 }
 
 func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {

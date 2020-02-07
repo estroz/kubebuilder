@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,8 @@ validating and (or) conversion webhooks.
 
   # Create conversion webhook for CRD of group crew, version v1 and kind FirstMate.
   %s create webhook --group crew --version v1 --kind FirstMate --conversion
-`, ctx.CommandName, ctx.CommandName)
+`,
+		ctx.CommandName, ctx.CommandName)
 }
 
 func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {

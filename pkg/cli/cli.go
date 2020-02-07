@@ -31,7 +31,10 @@ import (
 )
 
 const (
-	noticeColor = "\033[1;36m%s\033[0m"
+	noticeColor         = "\033[1;36m%s\033[0m"
+	runInProjectRootMsg = `For project-specific information, run this command in the root directory of a
+project.
+`
 )
 
 // CLI interacts with a command line interface.
@@ -136,7 +139,7 @@ func (c *cli) initialize() error {
 	projectConfig, err := internalconfig.Read()
 	if os.IsNotExist(err) {
 		c.configured = false
-		c.projectVersion = internalconfig.DefaultVersion
+		c.projectVersion = c.defaultProjectVersion
 	} else if err == nil {
 		c.configured = true
 		c.projectVersion = projectConfig.Version

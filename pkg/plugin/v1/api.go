@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -81,7 +81,8 @@ After the scaffold is written, api will run make on the project.
 
   # Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
   make run
-	`, ctx.CommandName)
+	`,
+		ctx.CommandName)
 }
 
 func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {

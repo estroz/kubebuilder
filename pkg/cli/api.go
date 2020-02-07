@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,30 +25,35 @@ import (
 )
 
 func (c *cli) newCreateAPICmd() *cobra.Command {
+	ctx := c.newAPIContext()
 	cmd := &cobra.Command{
-		Use:   "api",
-		Short: "Scaffold a Kubernetes API",
-		Long: `Scaffold a Kubernetes API.
-`,
+		Use:     "api",
+		Short:   "Scaffold a Kubernetes API",
+		Long:    ctx.Description,
+		Example: ctx.Examples,
 		RunE: errCmdFunc(
 			fmt.Errorf("api subcommand requires an existing project"),
 		),
 	}
 
-	if !c.configured {
-		msg := `For project-specific information, run this command in the root directory of a
-project.
-`
-		cmd.Long = fmt.Sprintf("%s\n%s", cmd.Long, msg)
-		return cmd
-	}
-
 	// Lookup the plugin for projectVersion and bind it to the command.
-	c.bindCreateAPI(cmd)
+	c.bindCreateAPI(ctx, cmd)
 	return cmd
 }
 
-func (c cli) bindCreateAPI(cmd *cobra.Command) {
+func (c cli) newAPIContext() plugin.Context {
+	ctx := plugin.Context{
+		CommandName: c.commandName,
+		Description: `Scaffold a Kubernetes API.
+`,
+	}
+	if !c.configured {
+		ctx.Description = fmt.Sprintf("%s\n%s", ctx.Description, runInProjectRootMsg)
+	}
+	return ctx
+}
+
+func (c cli) bindCreateAPI(ctx plugin.Context, cmd *cobra.Command) {
 	versionedPlugins, err := c.getVersionedPlugins()
 	if err != nil {
 		cmdErr(cmd, err)
@@ -78,10 +83,6 @@ func (c cli) bindCreateAPI(cmd *cobra.Command) {
 
 	createAPI := getter.GetCreateAPIPlugin()
 	createAPI.BindFlags(cmd.Flags())
-	// TODO: inject defaults.
-	ctx := plugin.Context{
-		CommandName: c.commandName,
-	}
 	createAPI.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples

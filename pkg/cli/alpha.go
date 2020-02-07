@@ -22,8 +22,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAlphaCmd returns alpha subcommand which will be mounted
-// at the root command by the caller.
 func (c *cli) newAlphaCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "alpha",

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,8 @@ This command is only available for v1 scaffolding project.
 	ctx.Examples = fmt.Sprintf(`  # Create webhook for CRD of group crew, version v1 and kind FirstMate.
   # Set type to be mutating and operations to be create and update.
   %s alpha webhook --group crew --version v1 --kind FirstMate --type=mutating --operations=create,update
-`, ctx.CommandName)
+`,
+		ctx.CommandName)
 }
 
 func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {
