@@ -70,7 +70,7 @@ func (o *editOptions) bindFlags(cmd *cobra.Command) {
 }
 
 func (o *editOptions) LoadConfig() (*config.Config, error) {
-	return loadExistingConfig()
+	return config.LoadInitialized()
 }
 
 func (o *editOptions) Validate(c *config.Config) error {

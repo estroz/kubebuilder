@@ -57,7 +57,7 @@ var _ cmdutil.RunOptions = &updateOptions{}
 type updateOptions struct{}
 
 func (o *updateOptions) LoadConfig() (*config.Config, error) {
-	return loadExistingConfig()
+	return config.LoadInitialized()
 }
 
 func (o *updateOptions) Validate(c *config.Config) error {

@@ -23,7 +23,7 @@ import (
 )
 
 func (c *cli) newAlphaCmd() *cobra.Command {
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "alpha",
 		Short: "Expose commands which are in experimental or early stages of development",
 		Long:  `Command group for commands which are either experimental or in early stages of development`,
@@ -32,5 +32,4 @@ func (c *cli) newAlphaCmd() *cobra.Command {
 %s alpha webhook <params>`,
 			c.commandName),
 	}
-	return cmd
 }

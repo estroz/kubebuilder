@@ -19,7 +19,6 @@ package v2
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/pflag"
 
@@ -76,11 +75,7 @@ func (p *createWebhookPlugin) Run() error {
 }
 
 func (p *createWebhookPlugin) LoadConfig() (*config.Config, error) {
-	projectConfig, err := config.Load()
-	if os.IsNotExist(err) {
-		return nil, errors.New("unable to find configuration file, project must be initialized")
-	}
-	return projectConfig, err
+	return config.LoadInitialized()
 }
 
 func (p *createWebhookPlugin) Validate(_ *config.Config) error {

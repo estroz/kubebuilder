@@ -146,16 +146,16 @@ func (c *cli) initialize() error {
 		return fmt.Errorf("failed to read config: %v", err)
 	}
 
-	rootCmd := c.buildRootCmd()
+	c.cmd = c.buildRootCmd()
 
 	// Add extra commands injected by options.
 	for _, cmd := range c.extraCommands {
-		for _, subCmd := range rootCmd.Commands() {
+		for _, subCmd := range c.cmd.Commands() {
 			if cmd.Name() == subCmd.Name() {
 				return fmt.Errorf("command %q already exists", cmd.Name())
 			}
 		}
-		rootCmd.AddCommand(cmd)
+		c.cmd.AddCommand(cmd)
 	}
 
 	// Write deprecation notices after all commands have been constructed.
@@ -172,7 +172,6 @@ func (c *cli) initialize() error {
 		}
 	}
 
-	c.cmd = rootCmd
 	return nil
 }
 

@@ -17,12 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"log"
-	"os"
 
 	"sigs.k8s.io/kubebuilder/cmd/version"
-	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/cli"
 	pluginv1 "sigs.k8s.io/kubebuilder/pkg/plugin/v1"
 	pluginv2 "sigs.k8s.io/kubebuilder/pkg/plugin/v2"
@@ -46,12 +43,4 @@ func main() {
 	if err := c.Run(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func loadExistingConfig() (*config.Config, error) {
-	projectConfig, err := config.Load()
-	if os.IsNotExist(err) {
-		return nil, errors.New("unable to find configuration file, project must be initialized")
-	}
-	return projectConfig, err
 }

@@ -122,7 +122,7 @@ func (p *initPlugin) SetVersion(v string) {
 func (p *initPlugin) LoadConfig() (*config.Config, error) {
 	_, err := config.Read()
 	if err == nil || os.IsExist(err) {
-		return nil, errors.New("already initialized")
+		return nil, errors.New("config already initialized")
 	}
 	return p.config, nil
 }
