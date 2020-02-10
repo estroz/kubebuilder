@@ -18,7 +18,6 @@ package v1
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -114,11 +113,7 @@ func (p *createAPIPlugin) Run() error {
 }
 
 func (p *createAPIPlugin) LoadConfig() (*config.Config, error) {
-	projectConfig, err := config.Load()
-	if os.IsNotExist(err) {
-		return nil, errors.New("unable to find configuration file, project must be initialized")
-	}
-	return projectConfig, err
+	return config.LoadInitialized()
 }
 
 func (p *createAPIPlugin) Validate(_ *config.Config) error {
