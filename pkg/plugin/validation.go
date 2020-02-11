@@ -19,9 +19,13 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/blang/semver"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
+
+const defaultNameSuffix = ".kubebuilder.io"
 
 // ValidateVersion ensures version adheres to the plugin version format,
 // which is tolerant semver.
@@ -35,4 +39,24 @@ func ValidateVersion(version string) error {
 		return fmt.Errorf("failed to validate plugin version %q: %v", version, err)
 	}
 	return nil
+}
+
+// ValidateName ensures name is a valid DNS 1123 subdomain.
+func ValidateName(name string) error {
+	if errs := validation.IsDNS1123Subdomain(name); len(errs) != 0 {
+		return fmt.Errorf("plugin name %q is invalid: %v", name, errs)
+	}
+	return nil
+}
+
+// CmpNames compares n1 and n2 with string comparison while considering that
+// either n1 and n2 may be non-fully-qualified names.
+func CmpNames(n1, n2 string) int {
+	if !strings.Contains(n1, ".") {
+		n1 += defaultNameSuffix
+	}
+	if !strings.Contains(n2, ".") {
+		n2 += defaultNameSuffix
+	}
+	return strings.Compare(n1, n2)
 }
