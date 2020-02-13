@@ -14,36 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scaffold
+package internal
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/spf13/afero"
 
-	"sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
-type editScaffolder struct {
-	EditOptions
-	config *config.Config
-}
-
-type EditOptions struct {
-	Fs         afero.Fs
-	Multigroup bool
-}
-
-func NewEditScaffolder(config *config.Config, opts EditOptions) Scaffolder {
-	if opts.Fs == nil {
-		opts.Fs = afero.NewOsFs()
+func NewStateFromFSWalkFunc(state plugin.State, fs afero.Fs) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil || info == nil || info.IsDir() {
+			return err
+		}
+		fmt.Println("path:", path)
+		data, rerr := afero.ReadFile(fs, path)
+		if rerr != nil {
+			return fmt.Errorf("error adding file to state: %v", rerr)
+		}
+		file := plugin.File{}
+		file.Blob = data
+		file.Path = path
+		file.Info = info
+		return state.Add(file)
 	}
-	return &editScaffolder{
-		EditOptions: opts,
-		config:      config,
-	}
-}
-
-func (s *editScaffolder) Scaffold() error {
-	s.config.MultiGroup = s.Multigroup
-
-	return s.config.Save()
 }

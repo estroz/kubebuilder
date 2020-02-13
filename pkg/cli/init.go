@@ -151,5 +151,7 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 	init.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
-	cmd.RunE = runECmdFunc(init, fmt.Sprintf("failed to initialize project with version %q", c.projectVersion))
+	plugins := []plugin.GenericSubcommand{init}
+	plugins = append(plugins, pluginsToGenericSubcommands(versionedPlugins)...)
+	cmd.RunE = runECmdFunc(plugins, fmt.Sprintf("failed to initialize project with version %q", c.projectVersion))
 }

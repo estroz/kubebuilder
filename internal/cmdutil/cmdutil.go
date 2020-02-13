@@ -32,8 +32,6 @@ type RunOptions interface {
 	GetScaffolder(*config.Config) (scaffold.Scaffolder, error)
 	// - Step 4: call the Scaffold method of the Scaffolder instance
 	// Doesn't need any method
-	// - Step 5: finish the command execution
-	PostScaffold(*config.Config) error
 }
 
 // Run executes a command
@@ -56,11 +54,6 @@ func Run(options RunOptions) error {
 	}
 	// Step 4: scaffold
 	if err := scaffolder.Scaffold(); err != nil {
-		return err
-	}
-
-	// Step 5: finish
-	if err := options.PostScaffold(projectConfig); err != nil {
 		return err
 	}
 

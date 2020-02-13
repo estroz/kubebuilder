@@ -17,6 +17,8 @@ limitations under the License.
 package scaffold
 
 import (
+	"github.com/spf13/afero"
+
 	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
@@ -24,12 +26,21 @@ import (
 )
 
 type updateScaffolder struct {
+	UpdateOptions
 	config *config.Config
 }
 
-func NewUpdateScaffolder(config *config.Config) Scaffolder {
+type UpdateOptions struct {
+	Fs afero.Fs
+}
+
+func NewUpdateScaffolder(config *config.Config, opts UpdateOptions) Scaffolder {
+	if opts.Fs == nil {
+		opts.Fs = afero.NewOsFs()
+	}
 	return &updateScaffolder{
-		config: config,
+		UpdateOptions: opts,
+		config:        config,
 	}
 }
 
@@ -44,7 +55,7 @@ func (s *updateScaffolder) Scaffold() error {
 
 	return (&Scaffold{}).Execute(
 		universe,
-		input.Options{},
+		input.Options{Fs: s.Fs},
 		&project.GopkgToml{},
 	)
 }

@@ -17,7 +17,7 @@ limitations under the License.
 package model
 
 import (
-	"io/ioutil"
+	"github.com/spf13/afero"
 
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
@@ -64,9 +64,9 @@ func WithConfig(projectConfig *config.Config) UniverseOption {
 }
 
 // WithBoilerplateFrom loads the boilerplate from the provided path
-func WithBoilerplateFrom(path string) UniverseOption {
+func WithBoilerplateFrom(fs afero.Fs, path string) UniverseOption {
 	return func(universe *Universe) error {
-		boilerplate, err := ioutil.ReadFile(path)
+		boilerplate, err := afero.ReadFile(fs, path)
 		if err != nil {
 			return err
 		}

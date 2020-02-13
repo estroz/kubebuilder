@@ -16,6 +16,8 @@ limitations under the License.
 
 package input
 
+import "github.com/spf13/afero"
+
 // IfExistsAction determines what to do if the scaffold file already exists
 type IfExistsAction int
 
@@ -167,9 +169,10 @@ type RequiresValidation interface {
 
 // Options are the options for executing scaffold templates
 type Options struct {
+	// Fs to read/write files in GetInput.
+	Fs afero.Fs
 	// BoilerplatePath is the path to the boilerplate file
 	BoilerplatePath string
-
 	// Path is the path to the project
 	ProjectPath string
 }

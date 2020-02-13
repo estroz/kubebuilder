@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
@@ -47,6 +48,9 @@ type createAPIPlugin struct {
 
 	// runMake indicates whether to run make or not after scaffolding APIs
 	runMake bool
+
+	// Write generated files to this fs.
+	fs afero.Fs
 }
 
 var (
@@ -108,8 +112,19 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 		"if true an example reconcile body should be written while scaffolding a resource.")
 }
 
-func (p *createAPIPlugin) Run() error {
-	return cmdutil.Run(p)
+func (p *createAPIPlugin) Run(state plugin.State) error {
+	p.fs = afero.NewMemMapFs()
+	if err := cmdutil.Run(p); err != nil {
+		return err
+	}
+	return afero.Walk(p.fs, ".", internal.NewStateFromFSWalkFunc(state, p.fs))
+}
+
+func (p *createAPIPlugin) PostRun(_ plugin.State) error {
+	if p.runMake {
+		return internal.RunCmd("Running make", "make")
+	}
+	return nil
 }
 
 func (p *createAPIPlugin) LoadConfig() (*config.Config, error) {
@@ -149,12 +164,12 @@ func (p *createAPIPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, 
 		return nil, fmt.Errorf("unknown pattern %q", p.pattern)
 	}
 
-	return scaffold.NewAPIScaffolder(c, res, p.doResource, p.doController, plugins), nil
-}
-
-func (p *createAPIPlugin) PostScaffold(_ *config.Config) error {
-	if p.runMake {
-		return internal.RunCmd("Running make", "make")
+	opts := scaffold.APIOptions{
+		Fs:           p.fs,
+		Resource:     res,
+		DoResource:   p.doResource,
+		DoController: p.doController,
+		Plugins:      plugins,
 	}
-	return nil
+	return scaffold.NewAPIScaffolder(c, opts), nil
 }

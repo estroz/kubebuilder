@@ -19,6 +19,7 @@ package v1
 import (
 	"fmt"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
@@ -35,6 +36,9 @@ type createWebhookPlugin struct {
 	webhookType string
 	operations  []string
 	doMake      bool
+
+	// Write generated files to this fs.
+	fs afero.Fs
 }
 
 var (
@@ -69,8 +73,22 @@ func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.resource.Plural, "resource", "", "resource Resource")
 }
 
-func (p *createWebhookPlugin) Run() error {
-	return cmdutil.Run(p)
+func (p *createWebhookPlugin) Run(state plugin.State) error {
+	p.fs = afero.NewMemMapFs()
+	if err := cmdutil.Run(p); err != nil {
+		return err
+	}
+	return afero.Walk(p.fs, ".", internal.NewStateFromFSWalkFunc(state, p.fs))
+}
+
+func (p *createWebhookPlugin) PostRun(_ plugin.State) error {
+	if p.doMake {
+		err := internal.RunCmd("Running make", "make")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (p *createWebhookPlugin) LoadConfig() (*config.Config, error) {
@@ -85,18 +103,13 @@ func (p *createWebhookPlugin) Validate(_ *config.Config) error {
 }
 
 func (p *createWebhookPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
-	// Create the actual resource from the resource options
-	res := p.resource.NewV1Resource(&c.Config, false)
-
-	return scaffold.NewV1WebhookScaffolder(&c.Config, res, p.server, p.webhookType, p.operations), nil
-}
-
-func (p *createWebhookPlugin) PostScaffold(_ *config.Config) error {
-	if p.doMake {
-		err := internal.RunCmd("Running make", "make")
-		if err != nil {
-			return err
-		}
+	opts := scaffold.WebhookV1Options{
+		Fs: p.fs,
+		// Create the actual resource from the resource options
+		Resource:    p.resource.NewV1Resource(&c.Config, false),
+		Server:      p.server,
+		WebhookType: p.webhookType,
+		Operations:  p.operations,
 	}
-	return nil
+	return scaffold.NewV1WebhookScaffolder(&c.Config, opts), nil
 }

@@ -20,13 +20,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
+	"github.com/spf13/afero"
 	"golang.org/x/tools/imports"
 
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
@@ -57,6 +57,7 @@ type Scaffold struct {
 	ConfigPath string
 
 	GetWriter func(path string) (io.Writer, error)
+	GetReader func(path string) (io.Reader, error)
 
 	// Plugins is the list of plugins we should allow to transform our generated scaffolding
 	Plugins []Plugin
@@ -118,6 +119,10 @@ func validate(file input.File) error {
 }
 
 func (s *Scaffold) defaultOptions(options *input.Options) error {
+	if options.Fs == nil {
+		options.Fs = afero.NewOsFs()
+	}
+
 	// Use the default Boilerplate path if unset
 	if options.BoilerplatePath == "" {
 		options.BoilerplatePath = filepath.Join("hack", "boilerplate.go.txt")
@@ -136,8 +141,7 @@ func (s *Scaffold) defaultOptions(options *input.Options) error {
 		return err
 	}
 
-	var boilerplateBytes []byte
-	boilerplateBytes, err = ioutil.ReadFile(options.BoilerplatePath) // nolint:gosec
+	boilerplateBytes, err := afero.ReadFile(options.Fs, options.BoilerplatePath) // nolint:gosec
 	if !s.BoilerplateOptional && err != nil {
 		return err
 	}
@@ -159,17 +163,24 @@ func (s *Scaffold) universeDefaults(universe *model.Universe, files int) {
 }
 
 // Execute executes scaffolding the for files
-func (s *Scaffold) Execute(
-	universe *model.Universe,
-	options input.Options,
-	files ...input.File,
-) error {
+func (s *Scaffold) Execute(universe *model.Universe, options input.Options, files ...input.File) error {
+	rw := &FileReadWriter{}
+	if options.Fs != nil {
+		rw.Fs = options.Fs
+	}
 	if s.GetWriter == nil {
-		s.GetWriter = (&FileWriter{}).WriteCloser
+		s.GetWriter = rw.WriteCloser
+	}
+	if s.GetReader == nil {
+		s.GetReader = rw.ReadCloser
 	}
 	if s.FileExists == nil {
+		stat := os.Stat
+		if options.Fs != nil {
+			stat = options.Fs.Stat
+		}
 		s.FileExists = func(path string) bool {
-			_, err := os.Stat(path)
+			_, err := stat(path)
 			return err == nil
 		}
 	}
@@ -201,6 +212,13 @@ func (s *Scaffold) Execute(
 		if err := s.writeFile(f); err != nil {
 			return err
 		}
+	}
+
+	if err := afero.Walk(rw.Fs, ".", func(path string, info os.FileInfo, err error) error {
+		fmt.Println("path in Execute:", path)
+		return err
+	}); err != nil {
+		return fmt.Errorf("blah: %v", err)
 	}
 
 	return nil
@@ -259,7 +277,11 @@ func (s *Scaffold) writeFile(file *model.File) error {
 		}()
 	}
 
-	_, err = f.Write([]byte(file.Contents))
+	if _, err = f.Write([]byte(file.Contents)); err != nil {
+		return err
+	}
+
+	fmt.Println("\twrote file:", file.Path)
 
 	return err
 }

@@ -14,36 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scaffold
+package plugin
 
 import (
-	"github.com/spf13/afero"
-
-	"sigs.k8s.io/kubebuilder/internal/config"
+	"os"
 )
 
-type editScaffolder struct {
-	EditOptions
-	config *config.Config
+type Metadata struct {
+	Path string      `json:"path"`
+	Info os.FileInfo `json:"-"`
 }
 
-type EditOptions struct {
-	Fs         afero.Fs
-	Multigroup bool
+type File struct {
+	Metadata
+	Blob []byte `json:"blob"`
 }
 
-func NewEditScaffolder(config *config.Config, opts EditOptions) Scaffolder {
-	if opts.Fs == nil {
-		opts.Fs = afero.NewOsFs()
-	}
-	return &editScaffolder{
-		EditOptions: opts,
-		config:      config,
-	}
-}
-
-func (s *editScaffolder) Scaffold() error {
-	s.config.MultiGroup = s.Multigroup
-
-	return s.config.Save()
+type State interface {
+	Add(File) error
+	Delete(string) error
+	Has(string) bool
 }

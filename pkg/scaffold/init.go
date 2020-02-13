@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/spf13/afero"
+
 	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
@@ -45,18 +47,25 @@ const (
 )
 
 type initScaffolder struct {
+	InitOptions
 	config          *config.Config
 	boilerplatePath string
-	license         string
-	owner           string
 }
 
-func NewInitScaffolder(config *config.Config, license, owner string) Scaffolder {
+type InitOptions struct {
+	Fs      afero.Fs
+	License string
+	Owner   string
+}
+
+func NewInitScaffolder(config *config.Config, opts InitOptions) Scaffolder {
+	if opts.Fs == nil {
+		opts.Fs = afero.NewOsFs()
+	}
 	return &initScaffolder{
+		InitOptions:     opts,
 		config:          config,
 		boilerplatePath: filepath.Join("hack", "boilerplate.go.txt"),
-		license:         license,
-		owner:           owner,
 	}
 }
 
@@ -77,11 +86,15 @@ func (s *initScaffolder) Scaffold() error {
 
 	if err := (&Scaffold{BoilerplateOptional: true}).Execute(
 		universe,
-		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
+		input.Options{
+			Fs:              s.Fs,
+			ProjectPath:     s.config.Path(),
+			BoilerplatePath: s.boilerplatePath,
+		},
 		&project.Boilerplate{
 			Input:   input.Input{Path: s.boilerplatePath},
-			License: s.license,
-			Owner:   s.owner,
+			License: s.License,
+			Owner:   s.Owner,
 		},
 	); err != nil {
 		return err
@@ -89,7 +102,7 @@ func (s *initScaffolder) Scaffold() error {
 
 	universe, err = model.NewUniverse(
 		model.WithConfig(&s.config.Config),
-		model.WithBoilerplateFrom(s.boilerplatePath),
+		model.WithBoilerplateFrom(s.Fs, s.boilerplatePath),
 	)
 	if err != nil {
 		return fmt.Errorf("error initializing project: %v", err)
@@ -97,7 +110,11 @@ func (s *initScaffolder) Scaffold() error {
 
 	if err := (&Scaffold{}).Execute(
 		universe,
-		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
+		input.Options{
+			Fs:              s.Fs,
+			ProjectPath:     s.config.Path(),
+			BoilerplatePath: s.boilerplatePath,
+		},
 		&project.GitIgnore{},
 		&project.AuthProxyRole{},
 		&project.AuthProxyRoleBinding{},
@@ -118,7 +135,7 @@ func (s *initScaffolder) Scaffold() error {
 func (s *initScaffolder) scaffoldV1() error {
 	universe, err := model.NewUniverse(
 		model.WithConfig(&s.config.Config),
-		model.WithBoilerplateFrom(s.boilerplatePath),
+		model.WithBoilerplateFrom(s.Fs, s.boilerplatePath),
 	)
 	if err != nil {
 		return fmt.Errorf("error initializing project: %v", err)
@@ -126,7 +143,11 @@ func (s *initScaffolder) scaffoldV1() error {
 
 	return (&Scaffold{}).Execute(
 		universe,
-		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
+		input.Options{
+			Fs:              s.Fs,
+			ProjectPath:     s.config.Path(),
+			BoilerplatePath: s.boilerplatePath,
+		},
 		&project.KustomizeRBAC{},
 		&scaffoldv1.KustomizeImagePatch{},
 		&metricsauthv1.KustomizePrometheusMetricsPatch{},
@@ -148,7 +169,7 @@ func (s *initScaffolder) scaffoldV1() error {
 func (s *initScaffolder) scaffoldV2() error {
 	universe, err := model.NewUniverse(
 		model.WithConfig(&s.config.Config),
-		model.WithBoilerplateFrom(s.boilerplatePath),
+		model.WithBoilerplateFrom(s.Fs, s.boilerplatePath),
 	)
 	if err != nil {
 		return fmt.Errorf("error initializing project: %v", err)
@@ -156,7 +177,11 @@ func (s *initScaffolder) scaffoldV2() error {
 
 	return (&Scaffold{}).Execute(
 		universe,
-		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
+		input.Options{
+			Fs:              s.Fs,
+			ProjectPath:     s.config.Path(),
+			BoilerplatePath: s.boilerplatePath,
+		},
 		&metricsauthv2.AuthProxyPatch{},
 		&metricsauthv2.AuthProxyService{},
 		&metricsauthv2.ClientClusterRole{},

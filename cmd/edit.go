@@ -84,7 +84,10 @@ func (o *editOptions) Validate(c *config.Config) error {
 }
 
 func (o *editOptions) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
-	return scaffold.NewEditScaffolder(c, o.multigroup), nil
+	opts := scaffold.EditOptions{
+		Multigroup: o.multigroup,
+	}
+	return scaffold.NewEditScaffolder(c, opts), nil
 }
 
 func (o *editOptions) PostScaffold(_ *config.Config) error {

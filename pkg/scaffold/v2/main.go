@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/spf13/afero"
+
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
@@ -85,7 +87,7 @@ func (f *Main) Update(opts *MainUpdateOptions) error {
 		reconcilerSetupCodeFragment = fmt.Sprintf(`if err = (&controllers.%sReconciler{
 		Client: mgr.GetClient(),
 		Log: ctrl.Log.WithName("controllers").WithName("%s"),
-		Scheme: mgr.GetScheme(),  
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "%s")
 		os.Exit(1)
@@ -137,6 +139,8 @@ func (f *Main) Update(opts *MainUpdateOptions) error {
 type MainUpdateOptions struct {
 	// Config contains info about the project
 	Config *config.Config
+
+	Fs afero.Fs
 
 	// Resource is the resource being added
 	Resource *resource.Resource
@@ -190,7 +194,7 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
-		Port:               9443, 
+		Port:               9443,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

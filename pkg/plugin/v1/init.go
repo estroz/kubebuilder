@@ -26,17 +26,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
-	"sigs.k8s.io/kubebuilder/internal/config"
+	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
 )
 
 type initPlugin struct { // nolint:maligned
-	config *config.Config
+	config config.Config
 
 	// boilerplate options
 	license string
@@ -50,6 +52,9 @@ type initPlugin struct { // nolint:maligned
 	// flags
 	fetchDeps          bool
 	skipGoVersionCheck bool
+
+	// Write generated files to this fs.
+	fs afero.Fs
 }
 
 var (
@@ -103,31 +108,59 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.owner, "owner", "", "owner to add to the copyright")
 
 	// project args
-	if p.config == nil {
-		p.config = config.New(config.DefaultPath)
-	}
 	fs.StringVar(&p.config.Repo, "repo", "", "name to use for go module (e.g., github.com/user/repo), "+
 		"defaults to the go package of the current working directory.")
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
 }
 
-func (p *initPlugin) Run() error {
-	return cmdutil.Run(p)
+func (p *initPlugin) Run(state plugin.State) error {
+	p.fs = afero.NewMemMapFs()
+	if err := cmdutil.Run(p); err != nil {
+		return err
+	}
+	return afero.Walk(p.fs, ".", internal.NewStateFromFSWalkFunc(state, p.fs))
+}
+
+func (p *initPlugin) PostRun(_ plugin.State) error {
+	if !p.depFlag.Changed {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Println("Run `dep ensure` to fetch dependencies (Recommended) [y/n]?")
+		p.dep = internal.YesNo(reader)
+	}
+	if !p.dep {
+		fmt.Println("Skipping fetching dependencies.")
+		return nil
+	}
+
+	err := internal.RunCmd("Fetching dependencies", "dep", append([]string{"ensure"}, p.depArgs...)...)
+	if err != nil {
+		return err
+	}
+
+	err = internal.RunCmd("Running make", "make")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Next: define a resource with:\n$ kubebuilder create api")
+	return nil
 }
 
 func (p *initPlugin) SetVersion(v string) {
 	p.config.Version = v
 }
 
-func (p *initPlugin) LoadConfig() (*config.Config, error) {
-	_, err := config.Read()
+func (p *initPlugin) LoadConfig() (*internalconfig.Config, error) {
+	_, err := internalconfig.Read()
 	if err == nil || os.IsExist(err) {
 		return nil, errors.New("config already initialized")
 	}
-	return p.config, nil
+	c := internalconfig.New(internalconfig.DefaultPath)
+	c.Config = p.config
+	return c, nil
 }
 
-func (p *initPlugin) Validate(c *config.Config) error {
+func (p *initPlugin) Validate(c *internalconfig.Config) error {
 	// Requires go1.11+
 	if !p.skipGoVersionCheck {
 		if err := internal.ValidateGoVersion(); err != nil {
@@ -163,31 +196,11 @@ func (p *initPlugin) Validate(c *config.Config) error {
 	return nil
 }
 
-func (p *initPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
-	return scaffold.NewInitScaffolder(c, p.license, p.owner), nil
-}
-
-func (p *initPlugin) PostScaffold(_ *config.Config) error {
-	if !p.depFlag.Changed {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Println("Run `dep ensure` to fetch dependencies (Recommended) [y/n]?")
-		p.dep = internal.YesNo(reader)
+func (p *initPlugin) GetScaffolder(c *internalconfig.Config) (scaffold.Scaffolder, error) { // nolint:unparam
+	opts := scaffold.InitOptions{
+		Fs:      p.fs,
+		License: p.license,
+		Owner:   p.owner,
 	}
-	if !p.dep {
-		fmt.Println("Skipping fetching dependencies.")
-		return nil
-	}
-
-	err := internal.RunCmd("Fetching dependencies", "dep", append([]string{"ensure"}, p.depArgs...)...)
-	if err != nil {
-		return err
-	}
-
-	err = internal.RunCmd("Running make", "make")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Next: define a resource with:\n$ kubebuilder create api")
-	return nil
+	return scaffold.NewInitScaffolder(c, opts), nil
 }

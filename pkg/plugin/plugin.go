@@ -58,7 +58,8 @@ type GenericSubcommand interface {
 	// command line flags for the kubebuilder subcommand.
 	BindFlags(*pflag.FlagSet)
 	// Run runs the subcommand.
-	Run() error
+	Run(State) error
+	PostRun(State) error
 }
 
 type Context struct {

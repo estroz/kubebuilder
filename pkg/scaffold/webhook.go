@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/afero"
+
 	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
@@ -32,45 +34,42 @@ import (
 )
 
 type webhookScaffolder struct {
-	config   *config.Config
-	resource *resource.Resource
-	// v1
-	server      string
-	webhookType string
-	operations  []string
-	// v2
-	defaulting, validation, conversion bool
+	WebhookV1Options
+	WebhookV2Options
+	config *config.Config
 }
 
-func NewV1WebhookScaffolder(
-	config *config.Config,
-	resource *resource.Resource,
-	server string,
-	webhookType string,
-	operations []string,
-) Scaffolder {
+type WebhookV1Options struct {
+	Fs          afero.Fs
+	Resource    *resource.Resource
+	Server      string
+	WebhookType string
+	Operations  []string
+}
+
+func NewV1WebhookScaffolder(config *config.Config, opts WebhookV1Options) Scaffolder {
+	if opts.Fs == nil {
+		opts.Fs = afero.NewOsFs()
+	}
 	return &webhookScaffolder{
-		config:      config,
-		resource:    resource,
-		server:      server,
-		webhookType: webhookType,
-		operations:  operations,
+		WebhookV1Options: opts,
+		config:           config,
 	}
 }
 
-func NewV2WebhookScaffolder(
-	config *config.Config,
-	resource *resource.Resource,
-	defaulting bool,
-	validation bool,
-	conversion bool,
-) Scaffolder {
+type WebhookV2Options struct {
+	Fs                                 afero.Fs
+	Resource                           *resource.Resource
+	Defaulting, Validation, Conversion bool
+}
+
+func NewV2WebhookScaffolder(config *config.Config, opts WebhookV2Options) Scaffolder {
+	if opts.Fs == nil {
+		opts.Fs = afero.NewOsFs()
+	}
 	return &webhookScaffolder{
-		config:     config,
-		resource:   resource,
-		defaulting: defaulting,
-		validation: validation,
-		conversion: conversion,
+		WebhookV2Options: opts,
+		config:           config,
 	}
 }
 
@@ -88,40 +87,42 @@ func (s *webhookScaffolder) Scaffold() error {
 }
 
 func (s *webhookScaffolder) scaffoldV1() error {
+	res := s.WebhookV1Options.Resource
 	universe, err := model.NewUniverse(
 		model.WithConfig(s.config),
 		// TODO(adirio): missing model.WithBoilerplate[From], needs boilerplate or path
-		model.WithResource(s.resource),
+		model.WithResource(res),
 	)
 	if err != nil {
 		return err
 	}
 
-	webhookConfig := webhookv1.Config{Server: s.server, Type: s.webhookType, Operations: s.operations}
+	webhookConfig := webhookv1.Config{Server: s.Server, Type: s.WebhookType, Operations: s.Operations}
 
 	return (&Scaffold{}).Execute(
 		universe,
-		input.Options{},
+		input.Options{Fs: s.WebhookV1Options.Fs},
 		&managerv1.Webhook{},
-		&webhookv1.AdmissionHandler{Resource: s.resource, Config: webhookConfig},
-		&webhookv1.AdmissionWebhookBuilder{Resource: s.resource, Config: webhookConfig},
-		&webhookv1.AdmissionWebhooks{Resource: s.resource, Config: webhookConfig},
-		&webhookv1.AddAdmissionWebhookBuilderHandler{Resource: s.resource, Config: webhookConfig},
+		&webhookv1.AdmissionHandler{Resource: res, Config: webhookConfig},
+		&webhookv1.AdmissionWebhookBuilder{Resource: res, Config: webhookConfig},
+		&webhookv1.AdmissionWebhooks{Resource: res, Config: webhookConfig},
+		&webhookv1.AddAdmissionWebhookBuilderHandler{Resource: res, Config: webhookConfig},
 		&webhookv1.Server{Config: webhookConfig},
 		&webhookv1.AddServer{Config: webhookConfig},
 	)
 }
 
 func (s *webhookScaffolder) scaffoldV2() error {
+	res := s.WebhookV2Options.Resource
 	if s.config.MultiGroup {
-		fmt.Println(filepath.Join("apis", s.resource.Group, s.resource.Version,
-			fmt.Sprintf("%s_webhook.go", strings.ToLower(s.resource.Kind))))
+		fmt.Println(filepath.Join("apis", res.Group, res.Version,
+			fmt.Sprintf("%s_webhook.go", strings.ToLower(res.Kind))))
 	} else {
-		fmt.Println(filepath.Join("api", s.resource.Version,
-			fmt.Sprintf("%s_webhook.go", strings.ToLower(s.resource.Kind))))
+		fmt.Println(filepath.Join("api", res.Version,
+			fmt.Sprintf("%s_webhook.go", strings.ToLower(res.Kind))))
 	}
 
-	if s.conversion {
+	if s.Conversion {
 		fmt.Println(`Webhook server has been set up for you.
 You need to implement the conversion.Hub and conversion.Convertible interfaces for your CRD types.`)
 	}
@@ -129,32 +130,34 @@ You need to implement the conversion.Hub and conversion.Convertible interfaces f
 	universe, err := model.NewUniverse(
 		model.WithConfig(s.config),
 		// TODO(adirio): missing model.WithBoilerplate[From], needs boilerplate or path
-		model.WithResource(s.resource),
+		model.WithResource(res),
 	)
 	if err != nil {
 		return err
 	}
 
 	webhookScaffolder := &webhookv2.Webhook{
-		Resource:   s.resource,
-		Defaulting: s.defaulting,
-		Validating: s.validation,
+		Resource:   res,
+		Defaulting: s.Defaulting,
+		Validating: s.Validation,
 	}
 	if err := (&Scaffold{}).Execute(
 		universe,
-		input.Options{},
+		input.Options{Fs: s.WebhookV2Options.Fs},
 		webhookScaffolder,
 	); err != nil {
 		return err
 	}
 
+	// TODO(estroz): pipe fs here.
 	if err := (&scaffoldv2.Main{}).Update(
 		&scaffoldv2.MainUpdateOptions{
+			Fs:             s.WebhookV2Options.Fs,
 			Config:         s.config,
 			WireResource:   false,
 			WireController: false,
 			WireWebhook:    true,
-			Resource:       s.resource,
+			Resource:       res,
 		},
 	); err != nil {
 		return fmt.Errorf("error updating main.go: %v", err)

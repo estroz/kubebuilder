@@ -69,7 +69,7 @@ func (o *updateOptions) Validate(c *config.Config) error {
 }
 
 func (o *updateOptions) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
-	return scaffold.NewUpdateScaffolder(&c.Config), nil
+	return scaffold.NewUpdateScaffolder(&c.Config, scaffold.UpdateOptions{}), nil
 }
 
 func (o *updateOptions) PostScaffold(_ *config.Config) error {
