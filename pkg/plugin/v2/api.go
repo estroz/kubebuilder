@@ -112,7 +112,7 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&p.resource.Namespaced, "namespaced", true, "resource is namespaced")
 }
 
-func (p *createAPIPlugin) Run() error {
+func (p *createAPIPlugin) Run(_ *plugin.State) error {
 	return cmdutil.Run(p)
 }
 

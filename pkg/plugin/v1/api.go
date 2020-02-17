@@ -108,7 +108,7 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 		"if true an example reconcile body should be written while scaffolding a resource.")
 }
 
-func (p *createAPIPlugin) Run() error {
+func (p *createAPIPlugin) Run(_ *plugin.State) error {
 	return cmdutil.Run(p)
 }
 

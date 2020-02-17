@@ -69,7 +69,7 @@ func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.resource.Plural, "resource", "", "resource Resource")
 }
 
-func (p *createWebhookPlugin) Run() error {
+func (p *createWebhookPlugin) Run(_ *plugin.State) error {
 	return cmdutil.Run(p)
 }
 

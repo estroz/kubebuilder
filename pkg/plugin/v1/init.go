@@ -111,7 +111,7 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
 }
 
-func (p *initPlugin) Run() error {
+func (p *initPlugin) Run(_ *plugin.State) error {
 	return cmdutil.Run(p)
 }
 

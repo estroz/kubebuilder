@@ -70,7 +70,7 @@ func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {
 		"if set, scaffold the conversion webhook")
 }
 
-func (p *createWebhookPlugin) Run() error {
+func (p *createWebhookPlugin) Run(_ *plugin.State) error {
 	return cmdutil.Run(p)
 }
 

@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
@@ -65,6 +66,8 @@ type cli struct {
 	extraCommands []*cobra.Command
 	// Plugins injected by options.
 	plugins map[string][]plugin.Base
+	// Names of secondary pluigns to run after the invoked plugin.
+	pipedPluginNames []string
 }
 
 // New creates a new cli instance.
@@ -234,6 +237,11 @@ func (c cli) buildRootCmd() *cobra.Command {
 
 	rootCmd := c.defaultCommand()
 
+	// Define --pipe to receive an ordered set of plugins to run after the
+	// main plugin for the invoked command.
+	rootCmd.PersistentFlags().StringSliceVar(&c.pipedPluginNames, "pipe", nil,
+		"Names of secondary plugins to run following the invoked command. Plugins will be executed in the given order")
+
 	// kubebuilder alpha
 	alphaCmd := c.newAlphaCmd()
 	// kubebuilder alpha webhook (v1 only)
@@ -346,11 +354,34 @@ func errCmdFunc(err error) func(*cobra.Command, []string) error {
 }
 
 // runECmdFunc returns a cobra RunE function that runs gsub and returns its value.
-func runECmdFunc(gsub plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
+func runECmdFunc(orderedPlugins []plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
 	return func(*cobra.Command, []string) error {
-		if err := gsub.Run(); err != nil {
-			return fmt.Errorf("%s: %v", msg, err)
+		state := &plugin.State{Fs: afero.NewOsFs()}
+		for _, p := range orderedPlugins {
+			if err := p.Run(state); err != nil {
+				return fmt.Errorf("%s: %v", msg, err)
+			}
+			if err := state.Update(); err != nil {
+				return fmt.Errorf("failed to update plugin state: %v", err)
+			}
+			fmt.Printf("state after: %T\n", p)
+			for _, file := range state.Files {
+				previewLen := 20
+				if len(file.Blob) < previewLen {
+					previewLen = len(file.Blob)
+				}
+				fmt.Printf("\t%s: %#v\n", file.Path, string(file.Blob[:previewLen]))
+			}
 		}
 		return nil
 	}
+}
+
+func pluginsToGenericSubcommands(plugins []plugin.Base) (subcommands []plugin.GenericSubcommand) {
+	for _, p := range plugins {
+		if subc, isSubc := p.(plugin.GenericSubcommand); isSubc {
+			subcommands = append(subcommands, subc)
+		}
+	}
+	return subcommands
 }
