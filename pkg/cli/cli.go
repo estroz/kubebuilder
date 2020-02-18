@@ -65,6 +65,8 @@ type cli struct {
 	extraCommands []*cobra.Command
 	// Plugins injected by options.
 	plugins map[string][]plugin.Base
+	// Names of secondary pluigns to run after the invoked plugin.
+	pipedPluginNames []string
 }
 
 // New creates a new cli instance.
@@ -164,6 +166,11 @@ func (c *cli) initialize() error {
 		}
 		c.cmd.AddCommand(cmd)
 	}
+
+	// Define --pipe to receive an ordered set of plugins to run after the
+	// main plugin for the invoked command.
+	c.cmd.PersistentFlags().StringSliceVar(&c.pipedPluginNames, "pipe", nil,
+		"Names of secondary plugins to run following the invoked command. Plugins will be executed in the given order")
 
 	// Write deprecation notices after all commands have been constructed.
 	if c.projectVersion != "" {
@@ -346,10 +353,28 @@ func errCmdFunc(err error) func(*cobra.Command, []string) error {
 }
 
 // runECmdFunc returns a cobra RunE function that runs gsub and returns its value.
-func runECmdFunc(gsub plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
+func runECmdFunc(p plugin.GenericSubcommand, msg string, orderedPlugins []plugin.Base, cliPluginNames []string) func(*cobra.Command, []string) error { // nolint:interfacer
 	return func(*cobra.Command, []string) error {
-		if err := gsub.Run(); err != nil {
+		filteredPlugins := []plugin.GenericSubcommand{}
+		for _, pluginName := range cliPluginNames {
+			for _, orderedPlugin := range orderedPlugins {
+				if plugin.CmpNames(pluginName, orderedPlugin.Name()) == 0 {
+					if gsub, isGSub := orderedPlugin.(plugin.GenericSubcommand); isGSub {
+						filteredPlugins = append(filteredPlugins, gsub)
+					}
+				}
+			}
+		}
+		if injector, isInject := p.(plugin.DownstreamPluginInjector); isInject {
+			injector.Inject(filteredPlugins...)
+		}
+		if err := p.Run(nil); err != nil {
 			return fmt.Errorf("%s: %v", msg, err)
+		}
+		for _, p := range filteredPlugins {
+			if err := p.PostRun(); err != nil {
+				return fmt.Errorf("failed post-run: %v", err)
+			}
 		}
 		return nil
 	}

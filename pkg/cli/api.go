@@ -86,5 +86,6 @@ func (c cli) bindCreateAPI(ctx plugin.Context, cmd *cobra.Command) {
 	createAPI.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
-	cmd.RunE = runECmdFunc(createAPI, fmt.Sprintf("failed to create api for project with version %q", c.projectVersion))
+	cmd.RunE = runECmdFunc(createAPI, fmt.Sprintf("failed to create api for project with version %q", c.projectVersion),
+		versionedPlugins, c.pipedPluginNames)
 }

@@ -32,6 +32,7 @@ import (
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 )
 
@@ -59,7 +60,7 @@ type Scaffold struct {
 	GetWriter func(path string) (io.Writer, error)
 
 	// Plugins is the list of plugins we should allow to transform our generated scaffolding
-	Plugins []Plugin
+	Plugins []plugin.GenericSubcommand
 
 	FileExists func(path string) bool
 
@@ -68,13 +69,6 @@ type Scaffold struct {
 
 	// ConfigOptional, if true, skips errors reading the project configuration
 	ConfigOptional bool
-}
-
-// Plugin is the interface that a plugin must implement
-// We will (later) have an ExecPlugin that implements this by exec-ing a binary
-type Plugin interface {
-	// Pipe is the core plugin interface, that transforms a UniverseModel
-	Pipe(universe *model.Universe) error
 }
 
 func (s *Scaffold) setFields(t input.File) {
@@ -192,7 +186,7 @@ func (s *Scaffold) Execute(
 	}
 
 	for _, plugin := range s.Plugins {
-		if err := plugin.Pipe(universe); err != nil {
+		if err := plugin.Run(universe); err != nil {
 			return err
 		}
 	}

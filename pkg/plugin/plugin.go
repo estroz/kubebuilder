@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 )
 
 type Base interface {
@@ -58,7 +59,8 @@ type GenericSubcommand interface {
 	// command line flags for the kubebuilder subcommand.
 	BindFlags(*pflag.FlagSet)
 	// Run runs the subcommand.
-	Run() error
+	Run(*model.Universe) error
+	PostRun() error
 }
 
 type Context struct {
@@ -71,6 +73,10 @@ type Context struct {
 	Examples string
 }
 
+type DownstreamPluginInjector interface {
+	Inject(...GenericSubcommand) error
+}
+
 type InitPluginGetter interface {
 	Base
 	// GetInitPlugin returns the underlying Init interface.
@@ -79,6 +85,7 @@ type InitPluginGetter interface {
 
 type Init interface {
 	GenericSubcommand
+	DownstreamPluginInjector
 	// SetVersion injects the version a project is initialized with into the
 	// plugin.
 	SetVersion(string)
@@ -92,6 +99,7 @@ type CreateAPIPluginGetter interface {
 
 type CreateAPI interface {
 	GenericSubcommand
+	DownstreamPluginInjector
 }
 
 type CreateWebhookPluginGetter interface {
@@ -102,4 +110,5 @@ type CreateWebhookPluginGetter interface {
 
 type CreateWebhook interface {
 	GenericSubcommand
+	DownstreamPluginInjector
 }

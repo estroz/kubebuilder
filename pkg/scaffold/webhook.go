@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 	managerv1 "sigs.k8s.io/kubebuilder/pkg/scaffold/v1/manager"
 	webhookv1 "sigs.k8s.io/kubebuilder/pkg/scaffold/v1/webhook"
@@ -32,8 +33,9 @@ import (
 )
 
 type webhookScaffolder struct {
-	config   *config.Config
-	resource *resource.Resource
+	config            *config.Config
+	downstreamPlugins []plugin.GenericSubcommand
+	resource          *resource.Resource
 	// v1
 	server      string
 	webhookType string
@@ -48,13 +50,15 @@ func NewV1WebhookScaffolder(
 	server string,
 	webhookType string,
 	operations []string,
+	downstreamPlugins ...plugin.GenericSubcommand,
 ) Scaffolder {
 	return &webhookScaffolder{
-		config:      config,
-		resource:    resource,
-		server:      server,
-		webhookType: webhookType,
-		operations:  operations,
+		config:            config,
+		downstreamPlugins: downstreamPlugins,
+		resource:          resource,
+		server:            server,
+		webhookType:       webhookType,
+		operations:        operations,
 	}
 }
 
@@ -64,13 +68,15 @@ func NewV2WebhookScaffolder(
 	defaulting bool,
 	validation bool,
 	conversion bool,
+	downstreamPlugins ...plugin.GenericSubcommand,
 ) Scaffolder {
 	return &webhookScaffolder{
-		config:     config,
-		resource:   resource,
-		defaulting: defaulting,
-		validation: validation,
-		conversion: conversion,
+		config:            config,
+		downstreamPlugins: downstreamPlugins,
+		resource:          resource,
+		defaulting:        defaulting,
+		validation:        validation,
+		conversion:        conversion,
 	}
 }
 

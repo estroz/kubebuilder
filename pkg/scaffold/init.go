@@ -22,6 +22,7 @@ import (
 
 	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/model"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/project"
 	scaffoldv1 "sigs.k8s.io/kubebuilder/pkg/scaffold/v1"
@@ -46,12 +47,13 @@ const (
 
 type initScaffolder struct {
 	config          *config.Config
+	plugins         []plugin.GenericSubcommand
 	boilerplatePath string
 	license         string
 	owner           string
 }
 
-func NewInitScaffolder(config *config.Config, license, owner string) Scaffolder {
+func NewInitScaffolder(config *config.Config, license, owner string, plugins ...plugin.GenericSubcommand) Scaffolder {
 	return &initScaffolder{
 		config:          config,
 		boilerplatePath: filepath.Join("hack", "boilerplate.go.txt"),

@@ -81,7 +81,7 @@ func RunTemplate(templateName, templateValue string, data interface{}, funcMap t
 
 	var b bytes.Buffer
 	if err := t.Execute(&b, data); err != nil {
-		return "", fmt.Errorf("error rending template %s: %v", templateName, err)
+		return "", fmt.Errorf("error rendering template %s: %v", templateName, err)
 	}
 
 	return b.String(), nil

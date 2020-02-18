@@ -87,5 +87,6 @@ func (c cli) bindCreateWebhook(ctx plugin.Context, cmd *cobra.Command) {
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
 	cmd.RunE = runECmdFunc(createWebhook,
-		fmt.Sprintf("failed to create webhook for project with version %q", c.projectVersion))
+		fmt.Sprintf("failed to create webhook for project with version %q", c.projectVersion),
+		versionedPlugins, c.pipedPluginNames)
 }

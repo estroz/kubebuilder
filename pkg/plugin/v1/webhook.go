@@ -23,6 +23,7 @@ import (
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	"sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
@@ -30,11 +31,12 @@ import (
 )
 
 type createWebhookPlugin struct {
-	resource    *resource.Options
-	server      string
-	webhookType string
-	operations  []string
-	doMake      bool
+	resource          *resource.Options
+	downstreamPlugins []plugin.GenericSubcommand
+	server            string
+	webhookType       string
+	operations        []string
+	doMake            bool
 }
 
 var (
@@ -69,8 +71,17 @@ func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.resource.Plural, "resource", "", "resource Resource")
 }
 
-func (p *createWebhookPlugin) Run() error {
+func (p *createWebhookPlugin) Run(universe *model.Universe) error {
 	return cmdutil.Run(p)
+}
+
+func (p *createWebhookPlugin) PostRun() error {
+	return nil
+}
+
+func (p *createWebhookPlugin) Inject(plugins ...plugin.GenericSubcommand) error {
+	p.downstreamPlugins = plugins
+	return nil
 }
 
 func (p *createWebhookPlugin) LoadConfig() (*config.Config, error) {

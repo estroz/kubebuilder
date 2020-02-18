@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 	controllerv1 "sigs.k8s.io/kubebuilder/pkg/scaffold/v1/controller"
 	crdv1 "sigs.k8s.io/kubebuilder/pkg/scaffold/v1/crd"
@@ -38,7 +39,7 @@ type apiScaffolder struct {
 	config   *config.Config
 	resource *resource.Resource
 	// plugins is the list of plugins we should allow to transform our generated scaffolding
-	plugins []Plugin
+	plugins []plugin.GenericSubcommand
 	// doResource indicates whether to scaffold API Resource or not
 	doResource bool
 	// doController indicates whether to scaffold controller files or not
@@ -49,7 +50,7 @@ func NewAPIScaffolder(
 	config *config.Config,
 	res *resource.Resource,
 	doResource, doController bool,
-	plugins []Plugin,
+	plugins ...plugin.GenericSubcommand,
 ) Scaffolder {
 	return &apiScaffolder{
 		plugins:      plugins,

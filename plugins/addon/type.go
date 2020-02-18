@@ -42,8 +42,6 @@ func JSONTag(tag string) string {
 	return fmt.Sprintf("`json:\"%s\"`", tag)
 }
 
-// Resource.Resource
-
 const typesTemplate = `{{ .Boilerplate }}
 
 package {{ .Resource.Version }}
@@ -75,7 +73,7 @@ type {{.Resource.Kind}}Status struct {
 
 // +kubebuilder:object:root=true
 
-// {{.Resource.Kind}} is the Schema for the {{ .Resource.Resource }} API
+// {{.Resource.Kind}} is the Schema for the {{ .Resource.Plural }} API
 type {{.Resource.Kind}} struct {
 	metav1.TypeMeta   ` + "`" + `json:",inline"` + "`" + `
 	metav1.ObjectMeta ` + "`" + `json:"metadata,omitempty"` + "`" + `

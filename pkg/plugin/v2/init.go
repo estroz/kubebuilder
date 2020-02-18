@@ -28,13 +28,15 @@ import (
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	"sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
 )
 
 type initPlugin struct { // nolint:maligned
-	config *config.Config
+	config            *config.Config
+	downstreamPlugins []plugin.GenericSubcommand
 
 	// boilerplate options
 	license string
@@ -109,8 +111,17 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
 }
 
-func (p *initPlugin) Run() error {
+func (p *initPlugin) Run(universe *model.Universe) error {
 	return cmdutil.Run(p)
+}
+
+func (p *initPlugin) PostRun() error {
+	return nil
+}
+
+func (p *initPlugin) Inject(plugins ...plugin.GenericSubcommand) error {
+	p.downstreamPlugins = plugins
+	return nil
 }
 
 func (p *initPlugin) SetVersion(v string) {
@@ -157,7 +168,7 @@ func (p *initPlugin) Validate(c *config.Config) error {
 }
 
 func (p *initPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
-	return scaffold.NewInitScaffolder(c, p.license, p.owner), nil
+	return scaffold.NewInitScaffolder(c, p.license, p.owner, p.downstreamPlugins...), nil
 }
 
 func (p *initPlugin) PostScaffold(_ *config.Config) error {

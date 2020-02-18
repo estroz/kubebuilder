@@ -27,6 +27,7 @@ import (
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	"sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
@@ -36,7 +37,8 @@ import (
 
 type createAPIPlugin struct {
 	// pattern indicates that we should use a plugin to build according to a pattern
-	pattern string
+	pattern           string
+	downstreamPlugins []plugin.GenericSubcommand
 
 	resource *resource.Options
 
@@ -112,8 +114,17 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&p.resource.Namespaced, "namespaced", true, "resource is namespaced")
 }
 
-func (p *createAPIPlugin) Run() error {
+func (p *createAPIPlugin) Run(universe *model.Universe) error {
 	return cmdutil.Run(p)
+}
+
+func (p *createAPIPlugin) PostRun() error {
+	return nil
+}
+
+func (p *createAPIPlugin) Inject(plugins ...plugin.GenericSubcommand) error {
+	p.downstreamPlugins = plugins
+	return nil
 }
 
 func (p *createAPIPlugin) LoadConfig() (*config.Config, error) {
@@ -177,17 +188,16 @@ func (p *createAPIPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, 
 	res := p.resource.NewResource(&c.Config, p.doResource)
 
 	// Load the requested plugins
-	plugins := make([]scaffold.Plugin, 0)
 	switch strings.ToLower(p.pattern) {
 	case "":
 		// Default pattern
 	case "addon":
-		plugins = append(plugins, &addon.Plugin{})
+		p.downstreamPlugins = append(p.downstreamPlugins, &addon.Plugin{})
 	default:
 		return nil, fmt.Errorf("unknown pattern %q", p.pattern)
 	}
 
-	return scaffold.NewAPIScaffolder(c, res, p.doResource, p.doController, plugins), nil
+	return scaffold.NewAPIScaffolder(c, res, p.doResource, p.doController, p.downstreamPlugins...), nil
 }
 
 func (p *createAPIPlugin) PostScaffold(_ *config.Config) error {
