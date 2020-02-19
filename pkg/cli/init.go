@@ -19,12 +19,10 @@ package cli
 import (
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
@@ -46,8 +44,7 @@ func (c *cli) newInitCmd() *cobra.Command {
 
 	// Pre-parse the project version and help flags so that we can
 	// dynamically bind to a plugin's init implementation (or not).
-	var isHelpOnly bool
-	c.projectVersion, isHelpOnly = c.getBaseFlags()
+	isHelpOnly := c.setBaseFlagValuesIfNotHelp(true)
 
 	// If only the help flag was set, return the command as is.
 	if isHelpOnly {
@@ -97,29 +94,6 @@ func (c cli) getAvailableProjectVersions() (projectVersions []string) {
 		}
 	}
 	return projectVersions
-}
-
-// getBaseFlags parses the command line arguments, looking for --project-version
-// and help. If an error occurs or only --help is set, getBaseFlags returns an
-// empty string and true. Otherwise, getBaseFlags returns the project version
-// and false.
-func (c cli) getBaseFlags() (string, bool) {
-	fs := pflag.NewFlagSet("base", pflag.ExitOnError)
-	fs.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
-
-	var (
-		projectVersion string
-		help           bool
-	)
-	fs.StringVar(&projectVersion, "project-version", c.defaultProjectVersion, "project version")
-	fs.BoolVarP(&help, "help", "h", false, "print help")
-
-	err := fs.Parse(os.Args[1:])
-	doHelp := err != nil || help && !fs.Lookup("project-version").Changed
-	if doHelp {
-		return "", true
-	}
-	return projectVersion, false
 }
 
 func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {

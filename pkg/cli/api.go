@@ -36,6 +36,8 @@ func (c *cli) newCreateAPICmd() *cobra.Command {
 		),
 	}
 
+	_ = c.setBaseFlagValuesIfNotHelp(false)
+
 	// Lookup the plugin for projectVersion and bind it to the command.
 	c.bindCreateAPI(ctx, cmd)
 	return cmd

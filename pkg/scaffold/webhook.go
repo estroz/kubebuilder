@@ -33,15 +33,16 @@ import (
 )
 
 type webhookScaffolder struct {
-	config            *config.Config
-	downstreamPlugins []plugin.GenericSubcommand
-	resource          *resource.Resource
+	config   *config.Config
+	resource *resource.Resource
 	// v1
 	server      string
 	webhookType string
 	operations  []string
 	// v2
 	defaulting, validation, conversion bool
+	// plugins is the list of plugins we should allow to transform our generated scaffolding
+	plugins []plugin.GenericSubcommand
 }
 
 func NewV1WebhookScaffolder(
@@ -50,15 +51,15 @@ func NewV1WebhookScaffolder(
 	server string,
 	webhookType string,
 	operations []string,
-	downstreamPlugins ...plugin.GenericSubcommand,
+	plugins ...plugin.GenericSubcommand,
 ) Scaffolder {
 	return &webhookScaffolder{
-		config:            config,
-		downstreamPlugins: downstreamPlugins,
-		resource:          resource,
-		server:            server,
-		webhookType:       webhookType,
-		operations:        operations,
+		config:      config,
+		resource:    resource,
+		server:      server,
+		webhookType: webhookType,
+		operations:  operations,
+		plugins:     plugins,
 	}
 }
 
@@ -68,15 +69,15 @@ func NewV2WebhookScaffolder(
 	defaulting bool,
 	validation bool,
 	conversion bool,
-	downstreamPlugins ...plugin.GenericSubcommand,
+	plugins ...plugin.GenericSubcommand,
 ) Scaffolder {
 	return &webhookScaffolder{
-		config:            config,
-		downstreamPlugins: downstreamPlugins,
-		resource:          resource,
-		defaulting:        defaulting,
-		validation:        validation,
-		conversion:        conversion,
+		config:     config,
+		resource:   resource,
+		defaulting: defaulting,
+		validation: validation,
+		conversion: conversion,
+		plugins:    plugins,
 	}
 }
 
@@ -93,19 +94,23 @@ func (s *webhookScaffolder) Scaffold() error {
 	}
 }
 
-func (s *webhookScaffolder) scaffoldV1() error {
-	universe, err := model.NewUniverse(
+func (s *webhookScaffolder) buildUniverse() (*model.Universe, error) {
+	return model.NewUniverse(
 		model.WithConfig(s.config),
 		// TODO(adirio): missing model.WithBoilerplate[From], needs boilerplate or path
 		model.WithResource(s.resource),
 	)
+}
+
+func (s *webhookScaffolder) scaffoldV1() error {
+	universe, err := s.buildUniverse()
 	if err != nil {
 		return err
 	}
 
 	webhookConfig := webhookv1.Config{Server: s.server, Type: s.webhookType, Operations: s.operations}
 
-	return (&Scaffold{}).Execute(
+	return (&Scaffold{Plugins: s.plugins}).Execute(
 		universe,
 		input.Options{},
 		&managerv1.Webhook{},
@@ -132,11 +137,7 @@ func (s *webhookScaffolder) scaffoldV2() error {
 You need to implement the conversion.Hub and conversion.Convertible interfaces for your CRD types.`)
 	}
 
-	universe, err := model.NewUniverse(
-		model.WithConfig(s.config),
-		// TODO(adirio): missing model.WithBoilerplate[From], needs boilerplate or path
-		model.WithResource(s.resource),
-	)
+	universe, err := s.buildUniverse()
 	if err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ You need to implement the conversion.Hub and conversion.Convertible interfaces f
 		Defaulting: s.defaulting,
 		Validating: s.validation,
 	}
-	if err := (&Scaffold{}).Execute(
+	if err := (&Scaffold{Plugins: s.plugins}).Execute(
 		universe,
 		input.Options{},
 		webhookScaffolder,
@@ -154,7 +155,12 @@ You need to implement the conversion.Hub and conversion.Convertible interfaces f
 		return err
 	}
 
+	universe, err = s.buildUniverse()
+	if err != nil {
+		return err
+	}
 	if err := (&scaffoldv2.Main{}).Update(
+		universe,
 		&scaffoldv2.MainUpdateOptions{
 			Config:         s.config,
 			WireResource:   false,
@@ -162,6 +168,7 @@ You need to implement the conversion.Hub and conversion.Convertible interfaces f
 			WireWebhook:    true,
 			Resource:       s.resource,
 		},
+		s.plugins...,
 	); err != nil {
 		return fmt.Errorf("error updating main.go: %v", err)
 	}

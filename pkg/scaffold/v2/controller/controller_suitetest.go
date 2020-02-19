@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 	scaffoldv2 "sigs.k8s.io/kubebuilder/pkg/scaffold/v2"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/v2/internal"
@@ -117,9 +119,13 @@ var _ = AfterSuite(func() {
 })
 `
 
-// Update updates given file (suite_test.go) with code fragments required for
-// adding import paths and code setup for new types.
-func (f *SuiteTest) Update() error {
+func (f *SuiteTest) Update(universe *model.Universe, plugins ...plugin.GenericSubcommand) error {
+	return internal.Update(universe, f.Path, f.updateFile)
+}
+
+// updateFile updates given file (suite_test.go) with code fragments required
+// for adding import paths and code setup for new types.
+func (f *SuiteTest) updateFile(path string, contents []byte) ([]byte, error) {
 	ctrlImportCodeFragment := fmt.Sprintf(`"%s/controllers"
 `, f.Repo)
 	apiImportCodeFragment := fmt.Sprintf(`%s "%s"
@@ -130,14 +136,9 @@ Expect(err).NotTo(HaveOccurred())
 
 `, f.Resource.ImportAlias)
 
-	err := internal.InsertStringsInFile(f.Path,
+	return internal.InsertStrings(path, contents,
 		map[string][]string{
 			scaffoldv2.APIPkgImportScaffoldMarker: {ctrlImportCodeFragment, apiImportCodeFragment},
 			scaffoldv2.APISchemeScaffoldMarker:    {addschemeCodeFragment},
 		})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

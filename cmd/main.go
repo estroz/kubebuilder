@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/cli"
 	pluginv1 "sigs.k8s.io/kubebuilder/pkg/plugin/v1"
 	pluginv2 "sigs.k8s.io/kubebuilder/pkg/plugin/v2"
+	"sigs.k8s.io/kubebuilder/plugins/addon"
 )
 
 func main() {
@@ -30,6 +31,7 @@ func main() {
 		cli.WithPlugins(
 			&pluginv1.Plugin{},
 			&pluginv2.Plugin{},
+			&addon.Plugin{},
 		),
 		cli.WithExtraCommands(
 			newEditCmd(),

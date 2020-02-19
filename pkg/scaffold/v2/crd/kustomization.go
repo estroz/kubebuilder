@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/v2/internal"
 )
@@ -50,11 +52,15 @@ func (f *Kustomization) GetInput() (input.Input, error) {
 	return f.Input, nil
 }
 
-func (f *Kustomization) Update() error {
-	if f.Path == "" {
-		f.Path = filepath.Join("config", "crd", "kustomization.yaml")
+func (f *Kustomization) Update(universe *model.Universe, plugins ...plugin.GenericSubcommand) error {
+	path := f.Path
+	if path == "" {
+		path = filepath.Join("config", "crd", "kustomization.yaml")
 	}
+	return internal.Update(universe, path, f.updateFile)
+}
 
+func (f *Kustomization) updateFile(path string, contents []byte) ([]byte, error) {
 	// TODO(directxman12): not technically valid if something changes from the default
 	// (we'd need to parse the markers)
 
@@ -62,7 +68,7 @@ func (f *Kustomization) Update() error {
 	kustomizeWebhookPatchCodeFragment := fmt.Sprintf("#- patches/webhook_in_%s.yaml\n", f.Resource.Plural)
 	kustomizeCAInjectionPatchCodeFragment := fmt.Sprintf("#- patches/cainjection_in_%s.yaml\n", f.Resource.Plural)
 
-	return internal.InsertStringsInFile(f.Path,
+	return internal.InsertStrings(path, contents,
 		map[string][]string{
 			kustomizeResourceScaffoldMarker:         {kustomizeResourceCodeFragment},
 			kustomizeWebhookPatchScaffoldMarker:     {kustomizeWebhookPatchCodeFragment},

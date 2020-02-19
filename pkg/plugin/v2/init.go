@@ -119,9 +119,8 @@ func (p *initPlugin) PostRun() error {
 	return nil
 }
 
-func (p *initPlugin) Inject(plugins ...plugin.GenericSubcommand) error {
+func (p *initPlugin) Inject(plugins ...plugin.GenericSubcommand) {
 	p.downstreamPlugins = plugins
-	return nil
 }
 
 func (p *initPlugin) SetVersion(v string) {

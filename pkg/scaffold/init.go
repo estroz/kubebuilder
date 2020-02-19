@@ -47,10 +47,11 @@ const (
 
 type initScaffolder struct {
 	config          *config.Config
-	plugins         []plugin.GenericSubcommand
 	boilerplatePath string
 	license         string
 	owner           string
+	// plugins is the list of plugins we should allow to transform our generated scaffolding
+	plugins []plugin.GenericSubcommand
 }
 
 func NewInitScaffolder(config *config.Config, license, owner string, plugins ...plugin.GenericSubcommand) Scaffolder {
@@ -59,6 +60,7 @@ func NewInitScaffolder(config *config.Config, license, owner string, plugins ...
 		boilerplatePath: filepath.Join("hack", "boilerplate.go.txt"),
 		license:         license,
 		owner:           owner,
+		plugins:         plugins,
 	}
 }
 
@@ -77,7 +79,7 @@ func (s *initScaffolder) Scaffold() error {
 		return fmt.Errorf("error initializing project: %v", err)
 	}
 
-	if err := (&Scaffold{BoilerplateOptional: true}).Execute(
+	if err := (&Scaffold{BoilerplateOptional: true, Plugins: s.plugins}).Execute(
 		universe,
 		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
 		&project.Boilerplate{
@@ -97,7 +99,7 @@ func (s *initScaffolder) Scaffold() error {
 		return fmt.Errorf("error initializing project: %v", err)
 	}
 
-	if err := (&Scaffold{}).Execute(
+	if err := (&Scaffold{Plugins: s.plugins}).Execute(
 		universe,
 		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
 		&project.GitIgnore{},
@@ -126,7 +128,7 @@ func (s *initScaffolder) scaffoldV1() error {
 		return fmt.Errorf("error initializing project: %v", err)
 	}
 
-	return (&Scaffold{}).Execute(
+	return (&Scaffold{Plugins: s.plugins}).Execute(
 		universe,
 		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
 		&project.KustomizeRBAC{},
@@ -156,7 +158,7 @@ func (s *initScaffolder) scaffoldV2() error {
 		return fmt.Errorf("error initializing project: %v", err)
 	}
 
-	return (&Scaffold{}).Execute(
+	return (&Scaffold{Plugins: s.plugins}).Execute(
 		universe,
 		input.Options{ProjectPath: s.config.Path(), BoilerplatePath: s.boilerplatePath},
 		&metricsauthv2.AuthProxyPatch{},

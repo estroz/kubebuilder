@@ -36,6 +36,8 @@ func (c *cli) newCreateWebhookCmd() *cobra.Command {
 		),
 	}
 
+	_ = c.setBaseFlagValuesIfNotHelp(false)
+
 	// Lookup the plugin for projectVersion and bind it to the command.
 	c.bindCreateWebhook(ctx, cmd)
 	return cmd

@@ -79,9 +79,8 @@ func (p *createWebhookPlugin) PostRun() error {
 	return nil
 }
 
-func (p *createWebhookPlugin) Inject(plugins ...plugin.GenericSubcommand) error {
+func (p *createWebhookPlugin) Inject(plugins ...plugin.GenericSubcommand) {
 	p.downstreamPlugins = plugins
-	return nil
 }
 
 func (p *createWebhookPlugin) LoadConfig() (*config.Config, error) {

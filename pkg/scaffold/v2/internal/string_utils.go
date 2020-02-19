@@ -25,7 +25,51 @@ import (
 	"strings"
 
 	"golang.org/x/tools/imports"
+	"sigs.k8s.io/kubebuilder/pkg/model"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
+	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 )
+
+type updateFunc func(path string, contents []byte) ([]byte, error)
+
+// Update updates a file in a universe with a file-specific update function fn,
+// then executes a set of plugins on that universe, then writes the file to
+// disk. Update emulates Scaffold.Execute() behavior.
+func Update(universe *model.Universe, path string, fn updateFunc, plugins ...plugin.GenericSubcommand) (err error) {
+	var universeFile *model.File
+	for _, file := range universe.Files {
+		if file.Path == path {
+			universeFile = file
+			break
+		}
+	}
+	if universeFile == nil {
+		contents, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		universeFile = &model.File{
+			Path:           path,
+			Contents:       string(contents),
+			IfExistsAction: input.Overwrite,
+		}
+		universe.Files = append(universe.Files, universeFile)
+	}
+
+	contents, err := fn(path, []byte(universeFile.Contents))
+	if err != nil {
+		return err
+	}
+	universeFile.Contents = string(contents)
+
+	for _, p := range plugins {
+		if err := p.Run(universe); err != nil {
+			return err
+		}
+	}
+
+	return ioutil.WriteFile(path, []byte(universeFile.Contents), os.ModePerm)
+}
 
 // insertStrings reads content from given reader and insert string below the
 // line containing marker string. So for ex. in insertStrings(r, {'m1':
@@ -69,47 +113,27 @@ func insertStrings(r io.Reader, markerAndValues map[string][]string) (io.Reader,
 	return out, nil
 }
 
-func InsertStringsInFile(path string, markerAndValues map[string][]string) error {
-	isGoFile := false
-	if ext := filepath.Ext(path); ext == ".go" {
-		isGoFile = true
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
+func InsertStrings(path string, contents []byte, markerAndValues map[string][]string) ([]byte, error) {
+	f := bufio.NewReader(bytes.NewBuffer(contents))
 
 	r, err := insertStrings(f, markerAndValues)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = f.Close()
+	contents, err = ioutil.ReadAll(r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
-	formattedContent := content
-	if isGoFile {
-		formattedContent, err = imports.Process(path, content, nil)
+	formattedContent := contents
+	if filepath.Ext(path) == ".go" {
+		formattedContent, err = imports.Process("", contents, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-
-	// use Go import process to format the content
-	err = ioutil.WriteFile(path, formattedContent, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return formattedContent, nil
 }
 
 // filterExistingValues removes the single-line values that already exists in

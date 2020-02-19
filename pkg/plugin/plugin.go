@@ -27,14 +27,10 @@ import (
 type Base interface {
 	// Name returns a DNS1123 label string defining the plugin type.
 	// For example, Kubebuilder's main plugin would return "go".
-	//
-	// TODO: fully-qualified automatic append and comparison.
 	Name() string
 	// Version returns the plugin's semantic version, ex. "v1.2.3".
 	//
 	// Note: this version is different from config version.
-	//
-	// TODO: version format enforcement.
 	Version() string
 	// SupportedProjectVersions lists all project configuration versions this
 	// plugin supports, ex. []string{"2", "3"}. The returned slice cannot be empty.
@@ -58,8 +54,12 @@ type GenericSubcommand interface {
 	// BindFlags binds the plugin's flags to the CLI. This allows each plugin to define its own
 	// command line flags for the kubebuilder subcommand.
 	BindFlags(*pflag.FlagSet)
-	// Run runs the subcommand.
+	// Run runs the subcommand, taking data from the universe to inform plugin
+	// logic of what files preceding subcommands added/deleted.
 	Run(*model.Universe) error
+	// PostRun runs non-scaffolding code like generators or `make`. PostRun will
+	// be executed after all plugin Run's have completed in a subcommand
+	// invocation.
 	PostRun() error
 }
 
@@ -74,7 +74,11 @@ type Context struct {
 }
 
 type DownstreamPluginInjector interface {
-	Inject(...GenericSubcommand) error
+	// Inject adds a set of GenericSubcommand's to a base plugin, such as Init.
+	// The base plugin will run each subcommand after it calls its own Run method,
+	// passing its scaffold's universe to each injected subcommand.
+	// Subcommands are run in injection order.
+	Inject(...GenericSubcommand)
 }
 
 type InitPluginGetter interface {

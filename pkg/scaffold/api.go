@@ -38,12 +38,12 @@ import (
 type apiScaffolder struct {
 	config   *config.Config
 	resource *resource.Resource
-	// plugins is the list of plugins we should allow to transform our generated scaffolding
-	plugins []plugin.GenericSubcommand
 	// doResource indicates whether to scaffold API Resource or not
 	doResource bool
 	// doController indicates whether to scaffold controller files or not
 	doController bool
+	// plugins is the list of plugins we should allow to transform our generated scaffolding
+	plugins []plugin.GenericSubcommand
 }
 
 func NewAPIScaffolder(
@@ -53,11 +53,11 @@ func NewAPIScaffolder(
 	plugins ...plugin.GenericSubcommand,
 ) Scaffolder {
 	return &apiScaffolder{
-		plugins:      plugins,
 		resource:     res,
 		config:       config,
 		doResource:   doResource,
 		doController: doController,
+		plugins:      plugins,
 	}
 }
 
@@ -94,7 +94,7 @@ func (s *apiScaffolder) scaffoldV1() error {
 			return fmt.Errorf("error building API scaffold: %v", err)
 		}
 
-		if err := (&Scaffold{}).Execute(
+		if err := (&Scaffold{Plugins: s.plugins}).Execute(
 			universe,
 			input.Options{},
 			&crdv1.Register{Resource: s.resource},
@@ -127,7 +127,7 @@ func (s *apiScaffolder) scaffoldV1() error {
 			return fmt.Errorf("error building controller scaffold: %v", err)
 		}
 
-		if err := (&Scaffold{}).Execute(
+		if err := (&Scaffold{Plugins: s.plugins}).Execute(
 			universe,
 			input.Options{},
 			&controllerv1.Controller{Resource: s.resource},
@@ -184,7 +184,7 @@ func (s *apiScaffolder) scaffoldV2() error {
 		}
 
 		kustomizationFile := &crdv2.Kustomization{Resource: s.resource}
-		if err := (&Scaffold{}).Execute(
+		if err := (&Scaffold{Plugins: s.plugins}).Execute(
 			universe,
 			input.Options{},
 			kustomizationFile,
@@ -193,7 +193,11 @@ func (s *apiScaffolder) scaffoldV2() error {
 			return fmt.Errorf("error scaffolding kustomization: %v", err)
 		}
 
-		if err := kustomizationFile.Update(); err != nil {
+		universe, err = s.buildUniverse()
+		if err != nil {
+			return fmt.Errorf("error building kustomization update: %v", err)
+		}
+		if err := kustomizationFile.Update(universe, s.plugins...); err != nil {
 			return fmt.Errorf("error updating kustomization.yaml: %v", err)
 		}
 
@@ -229,18 +233,28 @@ func (s *apiScaffolder) scaffoldV2() error {
 			return fmt.Errorf("error scaffolding controller: %v", err)
 		}
 
-		if err := suiteTestFile.Update(); err != nil {
+		universe, err = s.buildUniverse()
+		if err != nil {
+			return fmt.Errorf("error building suite test update: %v", err)
+		}
+		if err := suiteTestFile.Update(universe, s.plugins...); err != nil {
 			return fmt.Errorf("error updating suite_test.go under controllers pkg: %v", err)
 		}
 	}
 
+	universe, err := s.buildUniverse()
+	if err != nil {
+		return fmt.Errorf("error building main update: %v", err)
+	}
 	if err := (&scaffoldv2.Main{}).Update(
+		universe,
 		&scaffoldv2.MainUpdateOptions{
 			Config:         &s.config.Config,
 			WireResource:   s.doResource,
 			WireController: s.doController,
 			Resource:       s.resource,
 		},
+		s.plugins...,
 	); err != nil {
 		return fmt.Errorf("error updating main.go: %v", err)
 	}

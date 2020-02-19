@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/cli/internal"
@@ -167,11 +168,6 @@ func (c *cli) initialize() error {
 		c.cmd.AddCommand(cmd)
 	}
 
-	// Define --pipe to receive an ordered set of plugins to run after the
-	// main plugin for the invoked command.
-	c.cmd.PersistentFlags().StringSliceVar(&c.pipedPluginNames, "pipe", nil,
-		"Names of secondary plugins to run following the invoked command. Plugins will be executed in the given order")
-
 	// Write deprecation notices after all commands have been constructed.
 	if c.projectVersion != "" {
 		versionedPlugins, err := c.getVersionedPlugins()
@@ -240,6 +236,7 @@ func (c cli) buildRootCmd() *cobra.Command {
 	configuredAndV1 := c.configured && c.projectVersion == config.Version1
 
 	rootCmd := c.defaultCommand()
+	setBaseFlags(rootCmd)
 
 	// kubebuilder alpha
 	alphaCmd := c.newAlphaCmd()
@@ -267,6 +264,15 @@ func (c cli) buildRootCmd() *cobra.Command {
 	rootCmd.AddCommand(c.newInitCmd())
 
 	return rootCmd
+}
+
+func setBaseFlags(cmd *cobra.Command) {
+	// Define --pipe to receive an ordered set of plugins to run after the
+	// main plugin for the invoked command.
+	if os.Getenv("KUBEBUILDER_ENABLE_PLUGINS") != "" {
+		cmd.PersistentFlags().StringSlice("plugins", nil,
+			"Names of plugins to run following the invoked command's plugin. Plugins will be executed in the given order")
+	}
 }
 
 // getVersionedPlugins returns all plugins for the project version that c is
@@ -338,6 +344,29 @@ After the scaffold is written, api will run make on the project.
 	}
 }
 
+// setBaseFlagValuesIfNotHelp parses the command line arguments, looking for
+// flags required to initialize a base plugin and help. Iff an error occurs
+// while parsing flags or only --help is set, setBaseFlagValuesIfNotHelp
+// returns true. If isInit is true, --project-version determines whether help
+// is required, as init has different behavior than other plugins.
+func (c *cli) setBaseFlagValuesIfNotHelp(isInit bool) bool {
+	fs := pflag.NewFlagSet("base", pflag.ExitOnError)
+	fs.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
+
+	fs.StringVar(&c.projectVersion, "project-version", c.defaultProjectVersion, "")
+	fs.StringSliceVar(&c.pipedPluginNames, "plugins", nil, "")
+	help := false
+	fs.BoolVarP(&help, "help", "h", false, "print help")
+
+	err := fs.Parse(os.Args[1:])
+	doHelp := err != nil || help
+	if isInit {
+		doHelp = doHelp && !fs.Lookup("project-version").Changed
+	}
+	fmt.Printf("plugins: %+q\n", c.pipedPluginNames)
+	return doHelp
+}
+
 // cmdErr updates a cobra command to output error information when executed
 // or used with the help flag.
 func cmdErr(cmd *cobra.Command, err error) {
@@ -353,25 +382,38 @@ func errCmdFunc(err error) func(*cobra.Command, []string) error {
 }
 
 // runECmdFunc returns a cobra RunE function that runs gsub and returns its value.
-func runECmdFunc(p plugin.GenericSubcommand, msg string, orderedPlugins []plugin.Base, cliPluginNames []string) func(*cobra.Command, []string) error { // nolint:interfacer
+func runECmdFunc(p plugin.GenericSubcommand, msg string, versionedPlugins []plugin.Base, cliPluginNames []string) func(*cobra.Command, []string) error { // nolint:interfacer
 	return func(*cobra.Command, []string) error {
 		filteredPlugins := []plugin.GenericSubcommand{}
+		unusedPluginNames := []string{}
 		for _, pluginName := range cliPluginNames {
-			for _, orderedPlugin := range orderedPlugins {
-				if plugin.NamesEqual(pluginName, orderedPlugin.Name()) {
-					if gsub, isGSub := orderedPlugin.(plugin.GenericSubcommand); isGSub {
-						filteredPlugins = append(filteredPlugins, gsub)
-					}
+			fmt.Println("CHECKING PLUGIN:", pluginName)
+			hasPlugin := false
+			for _, orderedPlugin := range versionedPlugins {
+				gsub, isGSub := orderedPlugin.(plugin.GenericSubcommand)
+				if plugin.NamesEqual(pluginName, orderedPlugin.Name()) && isGSub {
+					filteredPlugins = append(filteredPlugins, gsub)
+					hasPlugin = true
+					break
 				}
 			}
+			if !hasPlugin {
+				unusedPluginNames = append(unusedPluginNames, pluginName)
+			}
 		}
+		if len(unusedPluginNames) != 0 {
+			return fmt.Errorf("command does not support the following plugins: %q", unusedPluginNames)
+		}
+
 		if injector, isInject := p.(plugin.DownstreamPluginInjector); isInject {
+			fmt.Println("injecting:", filteredPlugins)
 			injector.Inject(filteredPlugins...)
 		}
+
 		if err := p.Run(nil); err != nil {
 			return fmt.Errorf("%s: %v", msg, err)
 		}
-		for _, p := range filteredPlugins {
+		for _, p := range append([]plugin.GenericSubcommand{p}, filteredPlugins...) {
 			if err := p.PostRun(); err != nil {
 				return fmt.Errorf("failed post-run: %v", err)
 			}

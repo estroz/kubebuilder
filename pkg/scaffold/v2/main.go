@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
+	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/input"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/v2/internal"
 )
@@ -48,11 +50,17 @@ func (f *Main) GetInput() (input.Input, error) {
 	return f.Input, nil
 }
 
-// Update updates main.go with code fragments required to wire a new
-// resource/controller.
-func (f *Main) Update(opts *MainUpdateOptions) error {
+func (f *Main) Update(universe *model.Universe, opts *MainUpdateOptions, plugins ...plugin.GenericSubcommand) error {
 	path := "main.go"
+	updateFunc := func(path string, contents []byte) ([]byte, error) {
+		return f.updateFile(path, contents, opts)
+	}
+	return internal.Update(universe, path, updateFunc)
+}
 
+// updateFile updates main.go with code fragments required to wire a new
+// resource/controller.
+func (f *Main) updateFile(path string, contents []byte, opts *MainUpdateOptions) ([]byte, error) {
 	// generate all the code fragments
 	apiImportCodeFragment := fmt.Sprintf(`%s "%s"
 `, opts.Resource.ImportAlias, opts.Resource.Package)
@@ -85,7 +93,7 @@ func (f *Main) Update(opts *MainUpdateOptions) error {
 		reconcilerSetupCodeFragment = fmt.Sprintf(`if err = (&controllers.%sReconciler{
 		Client: mgr.GetClient(),
 		Log: ctrl.Log.WithName("controllers").WithName("%s"),
-		Scheme: mgr.GetScheme(),  
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "%s")
 		os.Exit(1)
@@ -101,18 +109,19 @@ func (f *Main) Update(opts *MainUpdateOptions) error {
 `, opts.Resource.ImportAlias, opts.Resource.Kind, opts.Resource.Kind)
 
 	if opts.WireResource {
-		err := internal.InsertStringsInFile(path,
+		var err error
+		contents, err = internal.InsertStrings(path, contents,
 			map[string][]string{
 				APIPkgImportScaffoldMarker: {apiImportCodeFragment},
 				APISchemeScaffoldMarker:    {addschemeCodeFragment},
 			})
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if opts.WireController {
-		return internal.InsertStringsInFile(path,
+		return internal.InsertStrings(path, contents,
 			map[string][]string{
 				APIPkgImportScaffoldMarker:    {apiImportCodeFragment, ctrlImportCodeFragment},
 				APISchemeScaffoldMarker:       {addschemeCodeFragment},
@@ -121,7 +130,7 @@ func (f *Main) Update(opts *MainUpdateOptions) error {
 	}
 
 	if opts.WireWebhook {
-		return internal.InsertStringsInFile(path,
+		return internal.InsertStrings(path, contents,
 			map[string][]string{
 				APIPkgImportScaffoldMarker:    {apiImportCodeFragment, ctrlImportCodeFragment},
 				APISchemeScaffoldMarker:       {addschemeCodeFragment},
@@ -129,7 +138,7 @@ func (f *Main) Update(opts *MainUpdateOptions) error {
 			})
 	}
 
-	return nil
+	return contents, nil
 }
 
 // MainUpdateOptions contains info required for wiring an API/Controller in
@@ -190,7 +199,7 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
-		Port:               9443, 
+		Port:               9443,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

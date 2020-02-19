@@ -32,7 +32,6 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
-	"sigs.k8s.io/kubebuilder/plugins/addon"
 )
 
 type createAPIPlugin struct {
@@ -100,11 +99,6 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 		"if set, generate the controller without prompting the user")
 	p.controllerFlag = fs.Lookup("controller")
 
-	if os.Getenv("KUBEBUILDER_ENABLE_PLUGINS") != "" {
-		fs.StringVar(&p.pattern, "pattern", "",
-			"generates an API following an extension pattern (addon)")
-	}
-
 	fs.BoolVar(&p.force, "force", false,
 		"attempt to create resource even if it already exists")
 	p.resource = &resource.Options{}
@@ -122,9 +116,8 @@ func (p *createAPIPlugin) PostRun() error {
 	return nil
 }
 
-func (p *createAPIPlugin) Inject(plugins ...plugin.GenericSubcommand) error {
+func (p *createAPIPlugin) Inject(plugins ...plugin.GenericSubcommand) {
 	p.downstreamPlugins = plugins
-	return nil
 }
 
 func (p *createAPIPlugin) LoadConfig() (*config.Config, error) {
@@ -186,17 +179,6 @@ func (p *createAPIPlugin) Validate(c *config.Config) error {
 func (p *createAPIPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) {
 	// Create the actual resource from the resource options
 	res := p.resource.NewResource(&c.Config, p.doResource)
-
-	// Load the requested plugins
-	switch strings.ToLower(p.pattern) {
-	case "":
-		// Default pattern
-	case "addon":
-		p.downstreamPlugins = append(p.downstreamPlugins, &addon.Plugin{})
-	default:
-		return nil, fmt.Errorf("unknown pattern %q", p.pattern)
-	}
-
 	return scaffold.NewAPIScaffolder(c, res, p.doResource, p.doController, p.downstreamPlugins...), nil
 }
 
