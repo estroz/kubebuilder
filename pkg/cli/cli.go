@@ -224,7 +224,7 @@ func (c cli) validate() error {
 				break
 			}
 			for _, nextPlugin := range versionedPlugins[i+1:] {
-				if nextName := nextPlugin.Name(); plugin.CmpNames(pluginName, nextName) == 0 {
+				if nextName := nextPlugin.Name(); plugin.NamesEqual(pluginName, nextName) {
 					return fmt.Errorf("two plugins with the same name %q", nextName)
 				}
 			}
@@ -358,7 +358,7 @@ func runECmdFunc(p plugin.GenericSubcommand, msg string, orderedPlugins []plugin
 		filteredPlugins := []plugin.GenericSubcommand{}
 		for _, pluginName := range cliPluginNames {
 			for _, orderedPlugin := range orderedPlugins {
-				if plugin.CmpNames(pluginName, orderedPlugin.Name()) == 0 {
+				if plugin.NamesEqual(pluginName, orderedPlugin.Name()) {
 					if gsub, isGSub := orderedPlugin.(plugin.GenericSubcommand); isGSub {
 						filteredPlugins = append(filteredPlugins, gsub)
 					}

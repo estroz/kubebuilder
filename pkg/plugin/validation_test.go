@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestCmpNames(t *testing.T) {
+func TestNamesEqual(t *testing.T) {
 
 	tests := []struct {
 		name1, name2 string
@@ -34,16 +34,16 @@ func TestCmpNames(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		val := CmpNames(test.name1, test.name2)
-		if val == 0 {
+		equals := NamesEqual(test.name1, test.name2)
+		if equals {
 			// got error, but the name isn't invalid
 			if !test.wantEqual {
-				t.Errorf("plugin name cmp failed: want equal names %q and %q, got %d", test.name1, test.name2, val)
+				t.Errorf("plugin name cmp failed: want unequal names %q and %q, were equal", test.name1, test.name2)
 			}
 		} else {
 			// got no error, but the name is invalid
 			if test.wantEqual {
-				t.Errorf("plugin name cmp failed: want unequal names %q and %q but were equal", test.name1, test.name2)
+				t.Errorf("plugin name cmp failed: want equal names %q and %q, were unequal", test.name1, test.name2)
 			}
 		}
 	}

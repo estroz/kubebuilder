@@ -49,14 +49,14 @@ func ValidateName(name string) error {
 	return nil
 }
 
-// CmpNames compares n1 and n2 with string comparison while considering that
+// NamesEqual compares n1 and n2 with string comparison while considering that
 // either n1 and n2 may be non-fully-qualified names.
-func CmpNames(n1, n2 string) int {
+func NamesEqual(n1, n2 string) bool {
 	if !strings.Contains(n1, ".") {
 		n1 += defaultNameSuffix
 	}
 	if !strings.Contains(n2, ".") {
 		n2 += defaultNameSuffix
 	}
-	return strings.Compare(n1, n2)
+	return strings.Compare(n1, n2) == 0
 }
