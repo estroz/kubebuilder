@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,23 +14,45 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package internal
+package validation
 
 import (
 	"fmt"
 	"regexp"
 )
 
-// The following code came from "k8s.io/apimachinery/pkg/util/validation/validation.go"
-// If be required the usage of more funcs from this then please replace it for the import
-// ---------------------------------------
+// This file's code was copied from "k8s.io/apimachinery/pkg/util/validation"
+// to avoid package dependencies. In case of additional functionality from
+// "k8s.io/apimachinery" is needed, re-consider whether to add the dependency.
 
 const (
 	dns1123LabelFmt       string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
 	dns1123LabelMaxLength int    = 56 // = 63 - len("-system")
+
+	dns1123SubdomainFmt      string = dns1123LabelFmt + "(\\." + dns1123LabelFmt + ")*"
+	dns1123SubdomainErrorMsg string = "a DNS-1123 subdomain must consist of lower case alphanumeric characters, " +
+		"'-' or '.', and must start and end with an alphanumeric character"
+	// dns1123SubdomainMaxLength is a subdomain's max length in DNS (RFC 1123)
+	dns1123SubdomainMaxLength int = 253
 )
 
-var dns1123LabelRegexp = regexp.MustCompile("^" + dns1123LabelFmt + "$")
+var (
+	dns1123LabelRegexp     = regexp.MustCompile("^" + dns1123LabelFmt + "$")
+	dns1123SubdomainRegexp = regexp.MustCompile("^" + dns1123SubdomainFmt + "$")
+)
+
+// IsDNS1123Subdomain tests for a string that conforms to the definition of a
+// subdomain in DNS (RFC 1123).
+func IsDNS1123Subdomain(value string) []string {
+	var errs []string
+	if len(value) > dns1123SubdomainMaxLength {
+		errs = append(errs, maxLenError(dns1123SubdomainMaxLength))
+	}
+	if !dns1123SubdomainRegexp.MatchString(value) {
+		errs = append(errs, regexError(dns1123SubdomainErrorMsg, dns1123SubdomainFmt, "example.com"))
+	}
+	return errs
+}
 
 //IsDNS1123Label tests for a string that conforms to the definition of a label in DNS (RFC 1123).
 func IsDNS1123Label(value string) []string {
