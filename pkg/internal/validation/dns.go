@@ -21,49 +21,74 @@ import (
 	"regexp"
 )
 
-// This file's code was copied from "k8s.io/apimachinery/pkg/util/validation"
+// This file's code was modified from "k8s.io/apimachinery/pkg/util/validation"
 // to avoid package dependencies. In case of additional functionality from
 // "k8s.io/apimachinery" is needed, re-consider whether to add the dependency.
 
 const (
-	dns1123LabelFmt       string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
-	dns1123LabelMaxLength int    = 56 // = 63 - len("-system")
-
-	dns1123SubdomainFmt      string = dns1123LabelFmt + "(\\." + dns1123LabelFmt + ")*"
-	dns1123SubdomainErrorMsg string = "a DNS-1123 subdomain must consist of lower case alphanumeric characters, " +
-		"'-' or '.', and must start and end with an alphanumeric character"
-	// dns1123SubdomainMaxLength is a subdomain's max length in DNS (RFC 1123)
-	dns1123SubdomainMaxLength int = 253
+	dns1123LabelFmt     string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+	dns1123SubdomainFmt string = dns1123LabelFmt + "(\\." + dns1123LabelFmt + ")*"
+	dns1035LabelFmt     string = "[a-z]([-a-z0-9]*[a-z0-9])?"
 )
 
-var (
-	dns1123LabelRegexp     = regexp.MustCompile("^" + dns1123LabelFmt + "$")
-	dns1123SubdomainRegexp = regexp.MustCompile("^" + dns1123SubdomainFmt + "$")
-)
+type dnsValidationConfig struct {
+	format   string
+	maxLen   int
+	re       *regexp.Regexp
+	errMsg   string
+	examples []string
+}
 
-// IsDNS1123Subdomain tests for a string that conforms to the definition of a
-// subdomain in DNS (RFC 1123).
-func IsDNS1123Subdomain(value string) []string {
-	var errs []string
-	if len(value) > dns1123SubdomainMaxLength {
-		errs = append(errs, maxLenError(dns1123SubdomainMaxLength))
+var dns1123LabelConfig = dnsValidationConfig{
+	format:   dns1123LabelFmt,
+	maxLen:   56, // = 63 - len("-system")
+	re:       regexp.MustCompile("^" + dns1123LabelFmt + "$"),
+	errMsg:   "a DNS-1123 label must consist of lower case alphanumeric characters or '-'",
+	examples: []string{"example.com"},
+}
+
+var dns1123SubdomainConfig = dnsValidationConfig{
+	format: dns1123SubdomainFmt,
+	maxLen: 253, // a subdomain's max length in DNS (RFC 1123).
+	re:     regexp.MustCompile("^" + dns1123SubdomainFmt + "$"),
+	errMsg: "a DNS-1123 subdomain must consist of lower case alphanumeric characters, " +
+		"'-' or '.', and must start and end with an alphanumeric character",
+	examples: []string{"my-name", "abc-123"},
+}
+
+var dns1035LabelConfig = dnsValidationConfig{
+	format: dns1035LabelFmt,
+	maxLen: 63, // a label's max length in DNS (RFC 1035).
+	re:     regexp.MustCompile("^" + dns1035LabelFmt + "$"),
+	errMsg: "a DNS-1035 label must consist of lower case alphanumeric characters or '-', " +
+		"start with an alphabetic character, and end with an alphanumeric character",
+	examples: []string{"my-name", "123-abc"},
+}
+
+func (c dnsValidationConfig) check(value string) (errs []string) {
+	if len(value) > c.maxLen {
+		errs = append(errs, maxLenError(c.maxLen))
 	}
-	if !dns1123SubdomainRegexp.MatchString(value) {
-		errs = append(errs, regexError(dns1123SubdomainErrorMsg, dns1123SubdomainFmt, "example.com"))
+	if !c.re.MatchString(value) {
+		errs = append(errs, regexError(c.errMsg, c.format, c.examples...))
 	}
 	return errs
 }
 
-//IsDNS1123Label tests for a string that conforms to the definition of a label in DNS (RFC 1123).
+// IsDNS1123Subdomain tests for a string that conforms to the definition of a
+// subdomain in DNS (RFC 1123).
+func IsDNS1123Subdomain(value string) []string {
+	return dns1123SubdomainConfig.check(value)
+}
+
+// IsDNS1123Label tests for a string that conforms to the definition of a label in DNS (RFC 1123).
 func IsDNS1123Label(value string) []string {
-	var errs []string
-	if len(value) > dns1123LabelMaxLength {
-		errs = append(errs, maxLenError(dns1123LabelMaxLength))
-	}
-	if !dns1123LabelRegexp.MatchString(value) {
-		errs = append(errs, regexError("invalid value for project name", dns1123LabelFmt))
-	}
-	return errs
+	return dns1123LabelConfig.check(value)
+}
+
+// IsDNS1035Label tests for a string that conforms to the definition of a label in DNS (RFC 1035).
+func IsDNS1035Label(value string) []string {
+	return dns1035LabelConfig.check(value)
 }
 
 // regexError returns a string explanation of a regex validation failure.
