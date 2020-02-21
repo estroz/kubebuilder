@@ -22,7 +22,8 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"k8s.io/apimachinery/pkg/util/validation"
+
+	"sigs.k8s.io/kubebuilder/pkg/model/validation"
 )
 
 const defaultNameSuffix = ".kubebuilder.io"
@@ -49,14 +50,21 @@ func ValidateName(name string) error {
 	return nil
 }
 
-// CmpNames compares n1 and n2 with string comparison while considering that
-// either n1 and n2 may be non-fully-qualified names.
-func CmpNames(n1, n2 string) int {
+// TODO(estroz): consider domain in config as suffix in case of conflict.
+
+// DefaultNamesEqual calls NamesEqualWithSuffix with the default suffix.
+func DefaultNamesEqual(n1, n2 string) bool {
+	return NamesEqualWithSuffix(n1, n2, defaultNameSuffix)
+}
+
+// NamesEqualWithSuffix returns true if n1 and n2 with string comparison while
+// considering that either n1 and n2 may be non-fully-qualified names
+func NamesEqualWithSuffix(n1, n2 string, suffix string) bool {
 	if !strings.Contains(n1, ".") {
-		n1 += defaultNameSuffix
+		n1 += suffix
 	}
 	if !strings.Contains(n2, ".") {
-		n2 += defaultNameSuffix
+		n2 += suffix
 	}
-	return strings.Compare(n1, n2)
+	return strings.Compare(n1, n2) == 0
 }

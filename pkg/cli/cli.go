@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/cobra"
 
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
-	"sigs.k8s.io/kubebuilder/pkg/cli/internal"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
+	"sigs.k8s.io/kubebuilder/pkg/model/validation"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
@@ -185,10 +185,10 @@ func (c *cli) initialize() error {
 // validate validates fields in a cli.
 func (c cli) validate() error {
 	// Validate project versions.
-	if err := internal.ValidateProjectVersion(c.defaultProjectVersion); err != nil {
+	if err := validation.ValidateProjectVersion(c.defaultProjectVersion); err != nil {
 		return fmt.Errorf("failed to validate default project version %q: %v", c.defaultProjectVersion, err)
 	}
-	if err := internal.ValidateProjectVersion(c.projectVersion); err != nil {
+	if err := validation.ValidateProjectVersion(c.projectVersion); err != nil {
 		return fmt.Errorf("failed to validate project version %q: %v", c.projectVersion, err)
 	}
 
@@ -205,7 +205,7 @@ func (c cli) validate() error {
 					pluginName, pluginVersion, err)
 			}
 			for _, projectVersion := range versionedPlugin.SupportedProjectVersions() {
-				if err := internal.ValidateProjectVersion(projectVersion); err != nil {
+				if err := validation.ValidateProjectVersion(projectVersion); err != nil {
 					return fmt.Errorf("failed to validate plugin %q supported project version %q: %v",
 						pluginName, projectVersion, err)
 				}
@@ -216,8 +216,10 @@ func (c cli) validate() error {
 			if i == len(versionedPlugins)-1 {
 				break
 			}
+			// TODO(estroz): consider domain in config as suffix in case of conflict.
 			for _, nextPlugin := range versionedPlugins[i+1:] {
-				if nextName := nextPlugin.Name(); plugin.CmpNames(pluginName, nextName) == 0 {
+				nextName := nextPlugin.Name()
+				if plugin.DefaultNamesEqual(pluginName, nextName) {
 					return fmt.Errorf("two plugins with the same name %q", nextName)
 				}
 			}
