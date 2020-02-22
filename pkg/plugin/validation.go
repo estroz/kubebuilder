@@ -23,7 +23,7 @@ import (
 
 	"github.com/blang/semver"
 
-	"sigs.k8s.io/kubebuilder/pkg/model/validation"
+	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
 )
 
 const defaultNameSuffix = ".kubebuilder.io"

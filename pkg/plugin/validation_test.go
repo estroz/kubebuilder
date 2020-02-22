@@ -49,5 +49,4 @@ func TestNamesEqual(t *testing.T) {
 			}
 		}
 	}
-
 }
