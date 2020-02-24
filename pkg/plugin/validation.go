@@ -19,14 +19,11 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/blang/semver"
 
 	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
 )
-
-const defaultNameSuffix = ".kubebuilder.io"
 
 // ValidateVersion ensures version adheres to the plugin version format,
 // which is tolerant semver.
@@ -48,23 +45,4 @@ func ValidateName(name string) error {
 		return fmt.Errorf("plugin name %q is invalid: %v", name, errs)
 	}
 	return nil
-}
-
-// TODO(estroz): consider domain in config as suffix in case of conflict.
-
-// DefaultNamesEqual calls NamesEqualWithSuffix with the default suffix.
-func DefaultNamesEqual(n1, n2 string) bool {
-	return NamesEqualWithSuffix(n1, n2, defaultNameSuffix)
-}
-
-// NamesEqualWithSuffix returns true if n1 and n2 with string comparison while
-// considering that either n1 and n2 may be non-fully-qualified names
-func NamesEqualWithSuffix(n1, n2 string, suffix string) bool {
-	if !strings.Contains(n1, ".") {
-		n1 += suffix
-	}
-	if !strings.Contains(n2, ".") {
-		n2 += suffix
-	}
-	return strings.Compare(n1, n2) == 0
 }

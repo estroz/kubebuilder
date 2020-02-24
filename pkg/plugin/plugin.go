@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const DefaultNameQualifier = ".kubebuilder.io"
+
 type Base interface {
 	// Name returns a DNS1123 label string defining the plugin type.
 	// For example, Kubebuilder's main plugin would return "go".

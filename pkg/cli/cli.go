@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -194,7 +195,8 @@ func (c cli) validate() error {
 
 	// Validate plugin versions and name.
 	for _, versionedPlugins := range c.plugins {
-		for i, versionedPlugin := range versionedPlugins {
+		pluginNameSet := map[string]string{}
+		for _, versionedPlugin := range versionedPlugins {
 			pluginName := versionedPlugin.Name()
 			if err := plugin.ValidateName(pluginName); err != nil {
 				return fmt.Errorf("failed to validate plugin name %q: %v", pluginName, err)
@@ -213,15 +215,15 @@ func (c cli) validate() error {
 			// Pairwise comparison of all plugin names for a project version to detect
 			// conflicts. Names outside of a version can conflict because multiple
 			// project versions of a plugin may exist.
-			if i == len(versionedPlugins)-1 {
-				break
+			var name, suffix string
+			if strings.Contains(pluginName, ".") {
+				nameSplit := strings.SplitN(pluginName, ".", 2)
+				name, suffix = nameSplit[0], nameSplit[1]
+			} else {
+				name, suffix = pluginName, "kubebuilder.io"
 			}
-			// TODO(estroz): consider domain in config as suffix in case of conflict.
-			for _, nextPlugin := range versionedPlugins[i+1:] {
-				nextName := nextPlugin.Name()
-				if plugin.DefaultNamesEqual(pluginName, nextName) {
-					return fmt.Errorf("two plugins with the same name %q", nextName)
-				}
+			if nameExtension, seen := pluginNameSet[name]; seen && nameExtension == suffix {
+				return fmt.Errorf("two plugins with the same name %q", name+"."+nameExtension)
 			}
 		}
 	}
