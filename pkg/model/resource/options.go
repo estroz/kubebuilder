@@ -26,8 +26,8 @@ import (
 
 	"github.com/gobuffalo/flect"
 
+	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
-	"sigs.k8s.io/kubebuilder/pkg/model/validation"
 )
 
 const (

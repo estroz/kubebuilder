@@ -17,12 +17,11 @@ limitations under the License.
 package validation
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 )
 
-// The following code was copied from "k8s.io/apimachinery/pkg/util/validation"
+// This file's code was copied from "k8s.io/apimachinery/pkg/util/validation"
 // to avoid package dependencies. In case of additional functionality from
 // "k8s.io/apimachinery" is needed, re-consider whether to add the dependency.
 // ---------------------------------------------------------------------------
@@ -88,27 +87,4 @@ func regexError(msg string, fmt string, examples ...string) string {
 // failure.
 func maxLenError(length int) string {
 	return fmt.Sprintf("must be no more than %d characters", length)
-}
-
-// End copied code.
-// ---------------------------------------------------------------------------
-
-const (
-	// projectVersionFmt defines the project version format from a project config.
-	projectVersionFmt string = "[1-9][0-9]*(-(alpha|beta))?"
-)
-
-var (
-	projectVersionRe = regexp.MustCompile("^" + projectVersionFmt + "$")
-)
-
-// ValidateProjectVersion ensures version adheres to the project version format.
-func ValidateProjectVersion(version string) error {
-	if version == "" {
-		return errors.New("project version is empty")
-	}
-	if !projectVersionRe.MatchString(version) {
-		return errors.New(regexError("invalid value for project version", projectVersionFmt))
-	}
-	return nil
 }

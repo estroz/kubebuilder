@@ -28,7 +28,7 @@ import (
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	"sigs.k8s.io/kubebuilder/internal/config"
-	"sigs.k8s.io/kubebuilder/pkg/model/validation"
+	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
