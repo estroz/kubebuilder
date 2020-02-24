@@ -59,6 +59,7 @@ func (c cli) bindCreateAPI(ctx plugin.Context, cmd *cobra.Command) {
 		cmdErr(cmd, err)
 		return
 	}
+	// TODO: allow multiple getters if only one matches the config's layout.
 	var getter plugin.CreateAPIPluginGetter
 	var hasGetter bool
 	for _, p := range versionedPlugins {

@@ -59,6 +59,7 @@ func (c cli) bindCreateWebhook(ctx plugin.Context, cmd *cobra.Command) {
 		cmdErr(cmd, err)
 		return
 	}
+	// TODO: allow multiple getters if only one matches the config's layout.
 	var getter plugin.CreateWebhookPluginGetter
 	var hasGetter bool
 	for _, p := range versionedPlugins {
