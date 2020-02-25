@@ -91,6 +91,12 @@ func IsDNS1035Label(value string) []string {
 	return dns1035LabelConfig.check(value)
 }
 
+// maxLenError returns a string explanation of a "string too long" validation
+// failure.
+func maxLenError(length int) string {
+	return fmt.Sprintf("must be no more than %d characters", length)
+}
+
 // regexError returns a string explanation of a regex validation failure.
 func regexError(msg string, fmt string, examples ...string) string {
 	if len(examples) == 0 {
@@ -105,10 +111,4 @@ func regexError(msg string, fmt string, examples ...string) string {
 	}
 	msg += "regex used for validation is '" + fmt + "')"
 	return msg
-}
-
-// maxLenError returns a string explanation of a "string too long" validation
-// failure.
-func maxLenError(length int) string {
-	return fmt.Sprintf("must be no more than %d characters", length)
 }
