@@ -23,11 +23,11 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const DefaultNameQualifier = ".kubebuilder.io"
+
 type Base interface {
 	// Name returns a DNS1123 label string defining the plugin type.
 	// For example, Kubebuilder's main plugin would return "go".
-	//
-	// TODO: fully-qualified automatic append and comparison.
 	Name() string
 	// Version returns the plugin's semantic version, ex. "v1.2.3".
 	//
@@ -38,9 +38,14 @@ type Base interface {
 	SupportedProjectVersions() []string
 }
 
-// Key returns a Base plugin's unique identifying string.
-func Key(p Base) string {
-	return path.Join(p.Name(), "v"+strings.TrimLeft(p.Version(), "v"))
+// KeyFor returns a Base plugin's unique identifying string.
+func KeyFor(p Base) string {
+	return Key(p.Name(), p.Version())
+}
+
+// Key returns a unique identifying string for a plugin's name and version.
+func Key(name, version string) string {
+	return path.Join(name, "v"+strings.TrimLeft(version, "v"))
 }
 
 type Deprecated interface {

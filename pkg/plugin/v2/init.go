@@ -27,15 +27,16 @@ import (
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
-	"sigs.k8s.io/kubebuilder/internal/config"
+	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
+	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
 )
 
 type initPlugin struct { // nolint:maligned
-	config *config.Config
+	config config.Config
 
 	// boilerplate options
 	license string
@@ -102,9 +103,6 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.owner, "owner", "", "owner to add to the copyright")
 
 	// project args
-	if p.config == nil {
-		p.config = config.New(config.DefaultPath)
-	}
 	fs.StringVar(&p.config.Repo, "repo", "", "name to use for go module (e.g., github.com/user/repo), "+
 		"defaults to the go package of the current working directory.")
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
@@ -118,16 +116,20 @@ func (p *initPlugin) SetVersion(v string) {
 	p.config.Version = v
 }
 
-func (p *initPlugin) LoadConfig() (*config.Config, error) {
-	_, err := config.Read()
+func (p *initPlugin) LoadConfig() (*internalconfig.Config, error) {
+	_, err := internalconfig.Read()
 	if err == nil || os.IsExist(err) {
 		return nil, errors.New("config already initialized")
 	}
-
-	return p.config, nil
+	// Init plugins set the config layout.
+	p.config.Layout = plugin.Key(pluginName, pluginVersion)
+	// Initialize a new config to write.
+	config := internalconfig.New(internalconfig.DefaultPath)
+	config.Config = p.config
+	return config, nil
 }
 
-func (p *initPlugin) Validate(c *config.Config) error {
+func (p *initPlugin) Validate(c *internalconfig.Config) error {
 	// Requires go1.11+
 	if !p.skipGoVersionCheck {
 		if err := internal.ValidateGoVersion(); err != nil {
@@ -157,11 +159,11 @@ func (p *initPlugin) Validate(c *config.Config) error {
 	return nil
 }
 
-func (p *initPlugin) GetScaffolder(c *config.Config) (scaffold.Scaffolder, error) { // nolint:unparam
+func (p *initPlugin) GetScaffolder(c *internalconfig.Config) (scaffold.Scaffolder, error) { // nolint:unparam
 	return scaffold.NewInitScaffolder(c, p.license, p.owner), nil
 }
 
-func (p *initPlugin) PostScaffold(_ *config.Config) error {
+func (p *initPlugin) PostScaffold(_ *internalconfig.Config) error {
 	if (p.depFlag.Changed && !p.dep) || (!p.depFlag.Changed && !p.fetchDeps) {
 		fmt.Println("Skipping fetching dependencies.")
 		return nil

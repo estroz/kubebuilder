@@ -194,8 +194,12 @@ func (c cli) validate() error {
 
 	// Validate plugin versions and name.
 	for _, versionedPlugins := range c.plugins {
+		pluginNameSet := map[string]struct{}{}
 		for _, versionedPlugin := range versionedPlugins {
 			pluginName := versionedPlugin.Name()
+			if err := plugin.ValidateName(pluginName); err != nil {
+				return fmt.Errorf("failed to validate plugin name %q: %v", pluginName, err)
+			}
 			pluginVersion := versionedPlugin.Version()
 			if err := plugin.ValidateVersion(pluginVersion); err != nil {
 				return fmt.Errorf("failed to validate plugin %q version %q: %v",
@@ -207,6 +211,12 @@ func (c cli) validate() error {
 						pluginName, projectVersion, err)
 				}
 			}
+			// Check for duplicate plugin names. Names outside of a version can
+			// conflict because multiple project versions of a plugin may exist.
+			if _, seen := pluginNameSet[pluginName]; seen {
+				return fmt.Errorf("two plugins have the same name: %q", pluginName)
+			}
+			pluginNameSet[pluginName] = struct{}{}
 		}
 	}
 
