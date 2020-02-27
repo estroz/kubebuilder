@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/plugin/internal"
@@ -108,8 +109,35 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
 }
 
-func (p *initPlugin) Run() error {
-	return cmdutil.Run(p)
+func (p *initPlugin) Run(universe *model.Universe) error {
+
+	// Step 1: load config
+	projectConfig, err := p.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	// Step 2: validate
+	if err := p.Validate(projectConfig); err != nil {
+		return err
+	}
+
+	// Step 3: create scaffolder
+	scaffolder, err := p.GetScaffolder(projectConfig)
+	if err != nil {
+		return err
+	}
+	// Step 4: scaffold
+	if err := scaffolder.Scaffold(); err != nil {
+		return err
+	}
+
+	// Step 5: finish
+	if err := p.PostScaffold(projectConfig); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *initPlugin) SetVersion(v string) {

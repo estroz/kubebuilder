@@ -16,10 +16,6 @@ limitations under the License.
 
 package config
 
-import (
-	"sigs.k8s.io/kubebuilder/pkg/plugin"
-)
-
 const (
 	// Scaffolding versions
 	Version1 = "1"
@@ -109,17 +105,6 @@ func (config *Config) AddResource(gvk GVK) bool {
 	// Append the resource to the tracked ones, return true
 	config.Resources = append(config.Resources, gvk)
 	return true
-}
-
-// SetLayout sets config's layout with the key of a base plugin.
-func (config *Config) SetLayout(base plugin.Base) {
-	config.Layout = plugin.KeyFor(base)
-}
-
-// HasLayout compares a base plugin against config's layout, and returns true
-// if their unique keys compare.
-func (config Config) HasLayout(base plugin.Base) bool {
-	return plugin.KeyFor(base) == config.Layout
 }
 
 // GVK contains information about scaffolded resources

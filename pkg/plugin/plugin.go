@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 )
 
 const DefaultNameQualifier = ".kubebuilder.io"
@@ -36,11 +37,6 @@ type Base interface {
 	// SupportedProjectVersions lists all project configuration versions this
 	// plugin supports, ex. []string{"2", "3"}. The returned slice cannot be empty.
 	SupportedProjectVersions() []string
-}
-
-// KeyFor returns a Base plugin's unique identifying string.
-func KeyFor(p Base) string {
-	return Key(p.Name(), p.Version())
 }
 
 func Key(name, version string) string {
@@ -60,7 +56,7 @@ type GenericSubcommand interface {
 	// command line flags for the kubebuilder subcommand.
 	BindFlags(*pflag.FlagSet)
 	// Run runs the subcommand.
-	Run() error
+	Run(*model.Universe) error
 }
 
 type Context struct {

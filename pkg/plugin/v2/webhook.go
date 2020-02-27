@@ -26,6 +26,7 @@ import (
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
 	"sigs.k8s.io/kubebuilder/internal/config"
+	"sigs.k8s.io/kubebuilder/pkg/model"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
@@ -72,7 +73,7 @@ func (p *createWebhookPlugin) BindFlags(fs *pflag.FlagSet) {
 		"if set, scaffold the conversion webhook")
 }
 
-func (p *createWebhookPlugin) Run() error {
+func (p *createWebhookPlugin) Run(universe *model.Universe) error {
 	return cmdutil.Run(p)
 }
 
