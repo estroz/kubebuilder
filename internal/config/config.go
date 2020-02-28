@@ -31,7 +31,7 @@ const (
 	DefaultPath = "PROJECT"
 
 	// Default version if flag not provided
-	DefaultVersion = config.Version2
+	DefaultVersion = config.Version3
 )
 
 func exists(path string) (bool, error) {
@@ -98,7 +98,7 @@ type Config struct {
 func New(path string) *Config {
 	return &Config{
 		Config: config.Config{
-			Version: config.Version2,
+			Version: DefaultVersion,
 		},
 		path:         path,
 		mustNotExist: true,

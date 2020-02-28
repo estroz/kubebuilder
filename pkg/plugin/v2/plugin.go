@@ -25,7 +25,7 @@ const (
 	pluginVersion = "v2.0.0"
 )
 
-var supportedProjectVersions = []string{"2"}
+var supportedProjectVersions = []string{"2", "3-alpha"}
 
 var (
 	_ plugin.Base                      = Plugin{}

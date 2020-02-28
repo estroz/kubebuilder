@@ -121,8 +121,11 @@ func (p *initPlugin) LoadConfig() (*internalconfig.Config, error) {
 	if err == nil || os.IsExist(err) {
 		return nil, errors.New("config already initialized")
 	}
-	// Init plugins set the config layout.
-	p.config.Layout = plugin.Key(pluginName, pluginVersion)
+	// Only V3 projects get a layout.
+	if p.config.IsV3() {
+		// Init plugins set the config layout.
+		p.config.Layout = plugin.Key(pluginName, pluginVersion)
+	}
 	// Initialize a new config to write.
 	config := internalconfig.New(internalconfig.DefaultPath)
 	config.Config = p.config
