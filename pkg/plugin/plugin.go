@@ -43,6 +43,13 @@ func KeyFor(p Base) string {
 	return Key(p.Name(), p.Version())
 }
 
+// KeyFrom returns a name and version for an arbitrary key, emulating the
+// behavior of path.Split().
+func KeyFrom(key string) (name, version string) {
+	name, version = path.Split(key)
+	return path.Clean(name), path.Clean(version)
+}
+
 // Key returns a unique identifying string for a plugin's name and version.
 func Key(name, version string) string {
 	return path.Join(name, "v"+strings.TrimLeft(version, "v"))

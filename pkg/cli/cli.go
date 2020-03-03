@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
@@ -35,6 +36,10 @@ const (
 	runInProjectRootMsg = `For project-specific information, run this command in the root directory of a
 project.
 `
+
+	projectVersionFlag = "project-version"
+	helpFlag           = "help"
+	pluginNamesFlag    = "plugins"
 )
 
 // CLI interacts with a command line interface.
@@ -64,7 +69,12 @@ type cli struct {
 	// Commands injected by options.
 	extraCommands []*cobra.Command
 	// Plugins injected by options.
-	plugins map[string][]plugin.Base
+	pluginsFromOptions map[string][]plugin.Base
+
+	// Whether the command is requesting help.
+	doHelp bool
+	// A mapping of plugin name to version passed by to --plugins.
+	cliPluginKeys map[string]string
 }
 
 // New creates a new cli instance.
@@ -72,7 +82,8 @@ func New(opts ...Option) (CLI, error) {
 	c := &cli{
 		commandName:           "kubebuilder",
 		defaultProjectVersion: internalconfig.DefaultVersion,
-		plugins:               map[string][]plugin.Base{},
+		pluginsFromOptions:    map[string][]plugin.Base{},
+		cliPluginKeys:         map[string]string{},
 	}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
@@ -113,10 +124,10 @@ func WithPlugins(plugins ...plugin.Base) Option {
 	return func(c *cli) error {
 		for _, p := range plugins {
 			for _, version := range p.SupportedProjectVersions() {
-				if _, ok := c.plugins[version]; !ok {
-					c.plugins[version] = []plugin.Base{}
+				if _, ok := c.pluginsFromOptions[version]; !ok {
+					c.pluginsFromOptions[version] = []plugin.Base{}
 				}
-				c.plugins[version] = append(c.plugins[version], p)
+				c.pluginsFromOptions[version] = append(c.pluginsFromOptions[version], p)
 			}
 		}
 		return nil
@@ -134,12 +145,20 @@ func WithExtraCommands(cmds ...*cobra.Command) Option {
 
 // initialize initializes the cli.
 func (c *cli) initialize() error {
+	// Initialize cli with globally-relevant flags or flags that determine
+	// certain plugin type's configuration.
+	if err := c.parseBaseFlags(); err != nil {
+		return err
+	}
+
 	// Configure the project version first for plugin retrieval in command
 	// constructors.
 	projectConfig, err := internalconfig.Read()
 	if os.IsNotExist(err) {
 		c.configured = false
-		c.projectVersion = c.defaultProjectVersion
+		if c.projectVersion == "" {
+			c.projectVersion = c.defaultProjectVersion
+		}
 	} else if err == nil {
 		c.configured = true
 		c.projectVersion = projectConfig.Version
@@ -152,6 +171,14 @@ func (c *cli) initialize() error {
 	if err = c.validate(); err != nil {
 		return err
 	}
+
+	// Filter plugins by keys passed in CLI, if any.
+	versionedPlugins, err := c.getVersionedPlugins()
+	if err != nil {
+		return err
+	}
+	versionedPlugins = filterPluginsByKeys(versionedPlugins, c.cliPluginKeys)
+	c.pluginsFromOptions[c.projectVersion] = versionedPlugins
 
 	c.cmd = c.buildRootCmd()
 
@@ -166,17 +193,50 @@ func (c *cli) initialize() error {
 	}
 
 	// Write deprecation notices after all commands have been constructed.
-	if c.projectVersion != "" {
-		versionedPlugins, err := c.getVersionedPlugins()
-		if err != nil {
-			return err
+	for _, p := range versionedPlugins {
+		if d, isDeprecated := p.(plugin.Deprecated); isDeprecated {
+			fmt.Printf(noticeColor, fmt.Sprintf("[Deprecation Notice] %s\n\n",
+				d.DeprecationWarning()))
 		}
-		for _, p := range versionedPlugins {
-			if d, isDeprecated := p.(plugin.Deprecated); isDeprecated {
-				fmt.Printf(noticeColor, fmt.Sprintf("[Deprecation Notice] %s\n\n",
-					d.DeprecationWarning()))
-			}
+	}
+
+	return nil
+}
+
+// parseBaseFlags parses the command line arguments, looking for flags that
+// affect initialization of a cli. An error is returned only if an error
+// unrelated to flag parsing occurs.
+func (c *cli) parseBaseFlags() error {
+	// Create a dummy "base" flagset to populate from CLI args.
+	fs := pflag.NewFlagSet("base", pflag.ExitOnError)
+	fs.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
+
+	// Set base flags that require pre-parsing to initialize c.
+	fs.StringVar(&c.projectVersion, projectVersionFlag, c.defaultProjectVersion, "project version")
+	help := false
+	fs.BoolVarP(&help, helpFlag, "h", false, "print help")
+	pluginKeys := []string{}
+	fs.StringSliceVar(&pluginKeys, pluginNamesFlag, nil, "plugins to run")
+
+	// Parse current CLI args outside of cobra.
+	err := fs.Parse(os.Args[1:])
+	// User needs help if args are incorrect or --help is set and
+	// --project-version is not set.
+	c.doHelp = err != nil || help && !fs.Lookup(projectVersionFlag).Changed
+
+	// Parse plugin keys into a more manageable data structure (map) and check
+	// for duplicates.
+	for _, key := range pluginKeys {
+		pluginName, pluginVersion := plugin.KeyFrom(key)
+		existingVersion, exists := c.cliPluginKeys[pluginName]
+		if exists {
+			return fmt.Errorf("already seen plugin %s", pluginName)
 		}
+		if existingVersion == pluginVersion {
+			return fmt.Errorf("two versions (%s, %s) of plugin %s for this project version ",
+				pluginVersion, existingVersion, pluginName)
+		}
+		c.cliPluginKeys[pluginName] = pluginVersion
 	}
 
 	return nil
@@ -193,7 +253,7 @@ func (c cli) validate() error {
 	}
 
 	// Validate plugin versions and name.
-	for _, versionedPlugins := range c.plugins {
+	for _, versionedPlugins := range c.pluginsFromOptions {
 		pluginNameSet := map[string]struct{}{}
 		for _, versionedPlugin := range versionedPlugins {
 			pluginName := versionedPlugin.Name()
@@ -220,6 +280,17 @@ func (c cli) validate() error {
 		}
 	}
 
+	// Validate plugin keys set in CLI.
+	for pluginName, pluginVersion := range c.cliPluginKeys {
+		if err := plugin.ValidateName(pluginName); err != nil {
+			return fmt.Errorf("failed to validate plugin name %q: %v", pluginName, err)
+		}
+		if err := plugin.ValidateVersion(pluginVersion); err != nil {
+			return fmt.Errorf("failed to validate plugin %q version %q: %v",
+				pluginName, pluginVersion, err)
+		}
+	}
+
 	return nil
 }
 
@@ -228,7 +299,8 @@ func (c cli) validate() error {
 func (c cli) buildRootCmd() *cobra.Command {
 	configuredAndV1 := c.configured && c.projectVersion == config.Version1
 
-	rootCmd := c.defaultCommand()
+	rootCmd := defaultCommandFor(c.commandName)
+	rootCmd.PersistentFlags().StringSlice(pluginNamesFlag, nil, "plugins to run")
 
 	// kubebuilder alpha
 	alphaCmd := c.newAlphaCmd()
@@ -258,23 +330,43 @@ func (c cli) buildRootCmd() *cobra.Command {
 	return rootCmd
 }
 
+func filterPluginsByKeys(versionedPlugins []plugin.Base, cliPluginKeys map[string]string) (filteredPlugins []plugin.Base) {
+	if len(cliPluginKeys) == 0 {
+		return versionedPlugins
+	}
+	existingPlugins := map[string]plugin.Base{}
+	for pluginName, pluginVersion := range cliPluginKeys {
+		for _, versionedPlugin := range versionedPlugins {
+			keyFor := plugin.KeyFor(versionedPlugin)
+			if keyFor == plugin.Key(pluginName, pluginVersion) {
+				existingPlugins[keyFor] = versionedPlugin
+				break
+			}
+		}
+	}
+	for _, versionedPlugin := range existingPlugins {
+		filteredPlugins = append(filteredPlugins, versionedPlugin)
+	}
+	return filteredPlugins
+}
+
 // getVersionedPlugins returns all plugins for the project version that c is
 // configured with.
 func (c cli) getVersionedPlugins() ([]plugin.Base, error) {
 	if c.projectVersion == "" {
 		return nil, errors.New("project version not set")
 	}
-	versionedPlugins, versionFound := c.plugins[c.projectVersion]
+	versionedPlugins, versionFound := c.pluginsFromOptions[c.projectVersion]
 	if !versionFound {
-		return nil, fmt.Errorf("unknown project version %q", c.projectVersion)
+		return nil, fmt.Errorf("no plugins for project version %q", c.projectVersion)
 	}
 	return versionedPlugins, nil
 }
 
-// defaultCommand results the root command without its subcommands.
-func (c cli) defaultCommand() *cobra.Command {
+// defaultCommandFor results the root command without its subcommands.
+func defaultCommandFor(cmdName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   c.commandName,
+		Use:   cmdName,
 		Short: "Development kit for building Kubernetes extensions and tools.",
 		Long: fmt.Sprintf(`Development kit for building Kubernetes extensions and tools.
 
@@ -297,7 +389,7 @@ the schema for a Resource without writing a Controller, select "n" for Controlle
 
 After the scaffold is written, api will run make on the project.
 `,
-			c.commandName, c.commandName),
+			cmdName, cmdName),
 		Example: fmt.Sprintf(`
   # Initialize your project
   %s init --domain example.com --license apache2 --owner "The Kubernetes authors"
@@ -317,7 +409,7 @@ After the scaffold is written, api will run make on the project.
   # Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
   make run
 `,
-			c.commandName, c.commandName),
+			cmdName, cmdName),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cmd.Help(); err != nil {
