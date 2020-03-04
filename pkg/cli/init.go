@@ -106,10 +106,7 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 		}
 	}
 	if !foundGetter {
-		// TODO: this errors if a getter exists but not after filtering. Make this
-		// error message better. Same for create subcommands.
-		log.Fatalf("project version %q does not support a project initialization plugin",
-			c.projectVersion)
+		log.Fatal(c.noGetterErr(versionedPlugins))
 	}
 
 	init := getter.GetInitPlugin()
@@ -119,4 +116,20 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
 	cmd.RunE = runECmdFunc(init, fmt.Sprintf("failed to initialize project with version %q", c.projectVersion))
+}
+
+func (c cli) noGetterErr(versionedPlugins []plugin.Base) error {
+	keys := []string{}
+
+	if len(versionedPlugins) == 0 && len(c.cliPluginKeys) != 0 {
+		for name, version := range c.cliPluginKeys {
+			keys = append(keys, plugin.Key(name, version))
+		}
+		return fmt.Errorf("no plugins found for CLI plugin keys %+q, likely a naming discrepancy", keys)
+	}
+
+	for _, p := range versionedPlugins {
+		keys = append(keys, plugin.KeyFor(p))
+	}
+	return fmt.Errorf("no plugin found for project version %q, possible plugins: %+q", c.projectVersion, keys)
 }

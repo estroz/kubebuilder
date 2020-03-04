@@ -68,9 +68,7 @@ func (c cli) bindCreateWebhook(ctx plugin.Context, cmd *cobra.Command) {
 		}
 	}
 	if !foundGetter {
-		err := fmt.Errorf("project version %q does not support a webhook creation plugin",
-			c.projectVersion)
-		cmdErr(cmd, err)
+		cmdErr(cmd, c.noGetterErr(versionedPlugins))
 		return
 	}
 

@@ -43,16 +43,27 @@ func KeyFor(p Base) string {
 	return Key(p.Name(), p.Version())
 }
 
-// KeyFrom returns a name and version for an arbitrary key, emulating the
-// behavior of path.Split().
-func KeyFrom(key string) (name, version string) {
-	name, version = path.Split(key)
-	return path.Clean(name), path.Clean(version)
-}
-
 // Key returns a unique identifying string for a plugin's name and version.
 func Key(name, version string) string {
+	if version == "" {
+		return name
+	}
 	return path.Join(name, "v"+strings.TrimLeft(version, "v"))
+}
+
+// KeyFrom returns a name and version for an arbitrary key.
+func KeyFrom(key string) (string, string) {
+	if !strings.Contains(key, "/") {
+		return key, ""
+	}
+	keyParts := strings.Split(key, "/")
+	return keyParts[0], keyParts[1]
+}
+
+// GetShortName returns plugin's short name (name before domain) if name
+// is fully qualified (has a domain suffix), otherwise GetShortName returns name.
+func GetShortName(name string) string {
+	return strings.SplitN(name, ".", 2)[0]
 }
 
 type Deprecated interface {

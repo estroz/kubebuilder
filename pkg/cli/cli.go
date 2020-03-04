@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -177,7 +178,10 @@ func (c *cli) initialize() error {
 	if err != nil {
 		return err
 	}
-	versionedPlugins = filterPluginsByKeys(versionedPlugins, c.cliPluginKeys)
+	versionedPlugins, err = filterPluginsByKeys(versionedPlugins, c.cliPluginKeys)
+	if err != nil {
+		return err
+	}
 	c.pluginsFromOptions[c.projectVersion] = versionedPlugins
 
 	c.cmd = c.buildRootCmd()
@@ -228,13 +232,11 @@ func (c *cli) parseBaseFlags() error {
 	// for duplicates.
 	for _, key := range pluginKeys {
 		pluginName, pluginVersion := plugin.KeyFrom(key)
-		existingVersion, exists := c.cliPluginKeys[pluginName]
-		if exists {
-			return fmt.Errorf("already seen plugin %s", pluginName)
+		if pluginName == "" {
+			return fmt.Errorf("plugin key %q must at least have a name", key)
 		}
-		if existingVersion == pluginVersion {
-			return fmt.Errorf("two versions (%s, %s) of plugin %s for this project version ",
-				pluginVersion, existingVersion, pluginName)
+		if _, exists := c.cliPluginKeys[pluginName]; exists {
+			return fmt.Errorf("duplicate plugin name %q", pluginName)
 		}
 		c.cliPluginKeys[pluginName] = pluginVersion
 	}
@@ -285,9 +287,12 @@ func (c cli) validate() error {
 		if err := plugin.ValidateName(pluginName); err != nil {
 			return fmt.Errorf("failed to validate plugin name %q: %v", pluginName, err)
 		}
-		if err := plugin.ValidateVersion(pluginVersion); err != nil {
-			return fmt.Errorf("failed to validate plugin %q version %q: %v",
-				pluginName, pluginVersion, err)
+		// CLI-set plugins do not have to contain a version.
+		if pluginVersion != "" {
+			if err := plugin.ValidateVersion(pluginVersion); err != nil {
+				return fmt.Errorf("failed to validate plugin %q version %q: %v",
+					pluginName, pluginVersion, err)
+			}
 		}
 	}
 
@@ -299,7 +304,7 @@ func (c cli) validate() error {
 func (c cli) buildRootCmd() *cobra.Command {
 	configuredAndV1 := c.configured && c.projectVersion == config.Version1
 
-	rootCmd := defaultCommandFor(c.commandName)
+	rootCmd := c.defaultCommand()
 	rootCmd.PersistentFlags().StringSlice(pluginNamesFlag, nil, "plugins to run")
 
 	// kubebuilder alpha
@@ -330,24 +335,74 @@ func (c cli) buildRootCmd() *cobra.Command {
 	return rootCmd
 }
 
-func filterPluginsByKeys(versionedPlugins []plugin.Base, cliPluginKeys map[string]string) (filteredPlugins []plugin.Base) {
+// filterPluginsByKeys matches plugins known to a cli to a set of plugin keys,
+// returning unambiguously matched plugins.
+// A match occurs if:
+// - Name and version are the same.
+// - Long or short name is the same, and only one version for that name exists.
+// If long or short name is the same, but multiple versions for that name exist,
+// don't guess which version to use and instead return an error.
+func filterPluginsByKeys(versionedPlugins []plugin.Base, cliPluginKeys map[string]string) ([]plugin.Base, error) {
 	if len(cliPluginKeys) == 0 {
-		return versionedPlugins
+		return versionedPlugins, nil
 	}
-	existingPlugins := map[string]plugin.Base{}
+
+	// Find all potential mateches for this plugin's name.
+	definitelyMatch, maybeMatch := []plugin.Base{}, map[string][]plugin.Base{}
 	for pluginName, pluginVersion := range cliPluginKeys {
+		cliPluginKey := plugin.Key(pluginName, pluginVersion)
+		// Prevents duplicate versions with the same name from being added to
+		// maybeMatch.
+		hasDefinitely := false
 		for _, versionedPlugin := range versionedPlugins {
-			keyFor := plugin.KeyFor(versionedPlugin)
-			if keyFor == plugin.Key(pluginName, pluginVersion) {
-				existingPlugins[keyFor] = versionedPlugin
+			longName := versionedPlugin.Name()
+			shortName := plugin.GetShortName(longName)
+
+			switch {
+			// Exact match.
+			case pluginName == longName && pluginVersion == versionedPlugin.Version():
+				definitelyMatch = append(definitelyMatch, versionedPlugin)
+				hasDefinitely = true
+			// Is at least a name match, and the CLI version wasn't set or was set
+			// and matches.
+			case pluginName == longName || pluginName == shortName:
+				if !hasDefinitely && (pluginVersion == "" || pluginVersion == versionedPlugin.Version()) {
+					maybeMatch[cliPluginKey] = append(maybeMatch[cliPluginKey], versionedPlugin)
+				}
+			}
+			// No more to look for in cliPluginKeys.
+			if hasDefinitely {
 				break
 			}
 		}
 	}
-	for _, versionedPlugin := range existingPlugins {
-		filteredPlugins = append(filteredPlugins, versionedPlugin)
+
+	// No ambiguously keyed plugins.
+	if len(maybeMatch) == 0 {
+		return definitelyMatch, nil
 	}
-	return filteredPlugins
+
+	msgs := []string{}
+	for key, plugins := range maybeMatch {
+		if len(plugins) == 1 {
+			// Only one plugin for a CLI key, which means there's only one version
+			// for that plugin and either its short or long name matched the CLI name.
+			definitelyMatch = append(definitelyMatch, plugins...)
+		} else {
+			// Multiple possible plugins the user could be specifying, return an
+			// error with ambiguous plugin info.
+			pluginKeys := []string{}
+			for _, p := range plugins {
+				pluginKeys = append(pluginKeys, plugin.KeyFor(p))
+			}
+			msgs = append(msgs, fmt.Sprintf("%q: %+q", key, pluginKeys))
+		}
+	}
+
+	if len(msgs) == 0 {
+		return definitelyMatch, nil
+	}
+	return nil, fmt.Errorf("ambiguous plugin keys, possible matches: %s", strings.Join(msgs, ", "))
 }
 
 // getVersionedPlugins returns all plugins for the project version that c is
@@ -363,10 +418,10 @@ func (c cli) getVersionedPlugins() ([]plugin.Base, error) {
 	return versionedPlugins, nil
 }
 
-// defaultCommandFor results the root command without its subcommands.
-func defaultCommandFor(cmdName string) *cobra.Command {
+// defaultCommand returns the root command without its subcommands.
+func (c cli) defaultCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   cmdName,
+		Use:   c.commandName,
 		Short: "Development kit for building Kubernetes extensions and tools.",
 		Long: fmt.Sprintf(`Development kit for building Kubernetes extensions and tools.
 
@@ -389,7 +444,7 @@ the schema for a Resource without writing a Controller, select "n" for Controlle
 
 After the scaffold is written, api will run make on the project.
 `,
-			cmdName, cmdName),
+			c.commandName, c.commandName),
 		Example: fmt.Sprintf(`
   # Initialize your project
   %s init --domain example.com --license apache2 --owner "The Kubernetes authors"
@@ -409,7 +464,7 @@ After the scaffold is written, api will run make on the project.
   # Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
   make run
 `,
-			cmdName, cmdName),
+			c.commandName, c.commandName),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cmd.Help(); err != nil {
