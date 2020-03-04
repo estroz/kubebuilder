@@ -55,7 +55,7 @@ type Option func(*cli) error
 
 // cli defines the command line structure and interfaces that are used to
 // scaffold kubebuilder project files.
-type cli struct {
+type cli struct { //nolint:maligned
 	// Base command name. Can be injected downstream.
 	commandName string
 	// Default project version. Used in CLI flag setup.

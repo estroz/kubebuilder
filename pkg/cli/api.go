@@ -59,6 +59,7 @@ func (c cli) bindCreateAPI(ctx plugin.Context, cmd *cobra.Command) {
 		cmdErr(cmd, err)
 		return
 	}
+	// TODO(estroz): infer which plugin should be used by config layout
 	var getter plugin.CreateAPIPluginGetter
 	var foundGetter bool
 	for _, p := range versionedPlugins {

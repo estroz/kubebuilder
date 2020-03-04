@@ -97,6 +97,8 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// TODO(estroz): infer which plugin should be used by using "go" default if
+	// it exists, otherwise error
 	var getter plugin.InitPluginGetter
 	var foundGetter bool
 	for _, p := range versionedPlugins {
