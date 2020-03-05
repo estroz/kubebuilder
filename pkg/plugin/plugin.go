@@ -56,7 +56,7 @@ func KeyFrom(key string) (string, string) {
 	if !strings.Contains(key, "/") {
 		return key, ""
 	}
-	keyParts := strings.Split(key, "/")
+	keyParts := strings.SplitN(key, "/", 2)
 	return keyParts[0], keyParts[1]
 }
 

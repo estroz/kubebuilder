@@ -43,7 +43,7 @@ func (c *cli) newInitCmd() *cobra.Command {
 		fmt.Sprintf("project version, possible values: (%s)", strings.Join(c.getAvailableProjectVersions(), ", ")))
 
 	// If only the help flag was set, return the command as is.
-	if c.doHelp {
+	if c.doGenericHelp {
 		return cmd
 	}
 
@@ -118,20 +118,4 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
 	cmd.RunE = runECmdFunc(init, fmt.Sprintf("failed to initialize project with version %q", c.projectVersion))
-}
-
-func (c cli) noGetterErr(versionedPlugins []plugin.Base) error {
-	keys := []string{}
-
-	if len(versionedPlugins) == 0 && len(c.cliPluginKeys) != 0 {
-		for name, version := range c.cliPluginKeys {
-			keys = append(keys, plugin.Key(name, version))
-		}
-		return fmt.Errorf("no plugins found for CLI plugin keys %+q, likely a naming discrepancy", keys)
-	}
-
-	for _, p := range versionedPlugins {
-		keys = append(keys, plugin.KeyFor(p))
-	}
-	return fmt.Errorf("no plugin found for project version %q, possible plugins: %+q", c.projectVersion, keys)
 }

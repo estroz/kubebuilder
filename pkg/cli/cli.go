@@ -55,7 +55,7 @@ type Option func(*cli) error
 
 // cli defines the command line structure and interfaces that are used to
 // scaffold kubebuilder project files.
-type cli struct { //nolint:maligned
+type cli struct {
 	// Base command name. Can be injected downstream.
 	commandName string
 	// Default project version. Used in CLI flag setup.
@@ -64,18 +64,18 @@ type cli struct { //nolint:maligned
 	projectVersion string
 	// True if the project has config file.
 	configured bool
+	// Whether the command is requesting help.
+	doGenericHelp bool
+
+	// Plugins injected by options.
+	pluginsFromOptions map[string][]plugin.Base
+	// A mapping of plugin name to version passed by to --plugins.
+	cliPluginKeys map[string]string
 
 	// Base command.
 	cmd *cobra.Command
 	// Commands injected by options.
 	extraCommands []*cobra.Command
-	// Plugins injected by options.
-	pluginsFromOptions map[string][]plugin.Base
-
-	// Whether the command is requesting help.
-	doHelp bool
-	// A mapping of plugin name to version passed by to --plugins.
-	cliPluginKeys map[string]string
 }
 
 // New creates a new cli instance.
@@ -83,8 +83,8 @@ func New(opts ...Option) (CLI, error) {
 	c := &cli{
 		commandName:           "kubebuilder",
 		defaultProjectVersion: internalconfig.DefaultVersion,
-		pluginsFromOptions:    map[string][]plugin.Base{},
-		cliPluginKeys:         map[string]string{},
+		pluginsFromOptions:    make(map[string][]plugin.Base),
+		cliPluginKeys:         make(map[string]string),
 	}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
@@ -224,9 +224,10 @@ func (c *cli) parseBaseFlags() error {
 
 	// Parse current CLI args outside of cobra.
 	err := fs.Parse(os.Args[1:])
-	// User needs help if args are incorrect or --help is set and
-	// --project-version is not set.
-	c.doHelp = err != nil || help && !fs.Lookup(projectVersionFlag).Changed
+	// User needs *generic* help if args are incorrect or --help is set and
+	// --project-version is not set. Plugin-specific help is given if a
+	// plugin.Context is updated, which does not require this field.
+	c.doGenericHelp = err != nil || help && !fs.Lookup(projectVersionFlag).Changed
 
 	// Parse plugin keys into a more manageable data structure (map) and check
 	// for duplicates.
@@ -256,7 +257,7 @@ func (c cli) validate() error {
 
 	// Validate plugin versions and name.
 	for _, versionedPlugins := range c.pluginsFromOptions {
-		pluginNameSet := map[string]struct{}{}
+		pluginNameSet := make(map[string]struct{}, len(versionedPlugins))
 		for _, versionedPlugin := range versionedPlugins {
 			pluginName := versionedPlugin.Name()
 			if err := plugin.ValidateName(pluginName); err != nil {
@@ -471,29 +472,5 @@ After the scaffold is written, api will run make on the project.
 				log.Fatal(err)
 			}
 		},
-	}
-}
-
-// cmdErr updates a cobra command to output error information when executed
-// or used with the help flag.
-func cmdErr(cmd *cobra.Command, err error) {
-	cmd.Long = fmt.Sprintf("%s\nNote: %v", cmd.Long, err)
-	cmd.RunE = errCmdFunc(err)
-}
-
-// errCmdFunc returns a cobra RunE function that returns the provided error
-func errCmdFunc(err error) func(*cobra.Command, []string) error {
-	return func(*cobra.Command, []string) error {
-		return err
-	}
-}
-
-// runECmdFunc returns a cobra RunE function that runs gsub and returns its value.
-func runECmdFunc(gsub plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
-	return func(*cobra.Command, []string) error {
-		if err := gsub.Run(); err != nil {
-			return fmt.Errorf("%s: %v", msg, err)
-		}
-		return nil
 	}
 }
