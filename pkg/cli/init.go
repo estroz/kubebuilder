@@ -93,22 +93,22 @@ func (c cli) getAvailableProjectVersions() (projectVersions []string) {
 }
 
 func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
-	versionedPlugins, err := c.getVersionedPlugins()
-	if err != nil {
-		log.Fatal(err)
-	}
-	// TODO(estroz): infer which plugin should be used by using "go" default if
-	// it exists, otherwise error
 	var getter plugin.InitPluginGetter
-	var foundGetter bool
-	for _, p := range versionedPlugins {
-		getter, foundGetter = p.(plugin.InitPluginGetter)
-		if foundGetter {
-			break
+	var hasGetter bool
+	for _, p := range c.resolvedPlugins {
+		tmpGetter, isGetter := p.(plugin.InitPluginGetter)
+		if isGetter {
+			if hasGetter {
+				log.Fatalf("duplicate initialization plugins for project version %q: %s, %s",
+					c.projectVersion, getter.Name(), p.Name())
+			}
+			hasGetter = true
+			getter = tmpGetter
 		}
 	}
-	if !foundGetter {
-		log.Fatal(c.noGetterErr(versionedPlugins))
+	if !hasGetter {
+		log.Fatalf("project version %q does not support an initialization plugin",
+			c.projectVersion)
 	}
 
 	init := getter.GetInitPlugin()

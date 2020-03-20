@@ -54,22 +54,25 @@ func (c cli) newAPIContext() plugin.Context {
 }
 
 func (c cli) bindCreateAPI(ctx plugin.Context, cmd *cobra.Command) {
-	versionedPlugins, err := c.getVersionedPlugins()
-	if err != nil {
-		cmdErr(cmd, err)
-		return
-	}
-	// TODO(estroz): infer which plugin should be used by config layout
 	var getter plugin.CreateAPIPluginGetter
-	var foundGetter bool
-	for _, p := range versionedPlugins {
-		getter, foundGetter = p.(plugin.CreateAPIPluginGetter)
-		if foundGetter {
-			break
+	var hasGetter bool
+	for _, p := range c.resolvedPlugins {
+		tmpGetter, isGetter := p.(plugin.CreateAPIPluginGetter)
+		if isGetter {
+			if hasGetter {
+				err := fmt.Errorf("duplicate API creation plugins for project version %q: %s, %s",
+					c.projectVersion, getter.Name(), p.Name())
+				cmdErr(cmd, err)
+				return
+			}
+			hasGetter = true
+			getter = tmpGetter
 		}
 	}
-	if !foundGetter {
-		cmdErr(cmd, c.noGetterErr(versionedPlugins))
+	if !hasGetter {
+		err := fmt.Errorf("project version %q does not support an API creation plugin",
+			c.projectVersion)
+		cmdErr(cmd, err)
 		return
 	}
 

@@ -54,25 +54,27 @@ func (c cli) newWebhookContext() plugin.Context {
 }
 
 func (c cli) bindCreateWebhook(ctx plugin.Context, cmd *cobra.Command) {
-	versionedPlugins, err := c.getVersionedPlugins()
-	if err != nil {
+	var getter plugin.CreateWebhookPluginGetter
+	var hasGetter bool
+	for _, p := range c.resolvedPlugins {
+		tmpGetter, isGetter := p.(plugin.CreateWebhookPluginGetter)
+		if isGetter {
+			if hasGetter {
+				err := fmt.Errorf("duplicate webhook creation plugins for project version %q: %s, %s",
+					c.projectVersion, getter.Name(), p.Name())
+				cmdErr(cmd, err)
+				return
+			}
+			hasGetter = true
+			getter = tmpGetter
+		}
+	}
+	if !hasGetter {
+		err := fmt.Errorf("project version %q does not support a webhook creation plugin",
+			c.projectVersion)
 		cmdErr(cmd, err)
 		return
 	}
-	// TODO(estroz): infer which plugin should be used by config layout
-	var getter plugin.CreateWebhookPluginGetter
-	var foundGetter bool
-	for _, p := range versionedPlugins {
-		getter, foundGetter = p.(plugin.CreateWebhookPluginGetter)
-		if foundGetter {
-			break
-		}
-	}
-	if !foundGetter {
-		cmdErr(cmd, c.noGetterErr(versionedPlugins))
-		return
-	}
-
 	createWebhook := getter.GetCreateWebhookPlugin()
 	createWebhook.BindFlags(cmd.Flags())
 	createWebhook.UpdateContext(&ctx)

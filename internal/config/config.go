@@ -31,7 +31,7 @@ const (
 	DefaultPath = "PROJECT"
 
 	// Default version if flag not provided
-	DefaultVersion = config.Version3
+	DefaultVersion = config.Version2
 )
 
 func exists(path string) (bool, error) {

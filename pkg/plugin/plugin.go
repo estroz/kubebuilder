@@ -38,11 +38,6 @@ type Base interface {
 	SupportedProjectVersions() []string
 }
 
-// KeyFor returns a Base plugin's unique identifying string.
-func KeyFor(p Base) string {
-	return Key(p.Name(), p.Version())
-}
-
 // Key returns a unique identifying string for a plugin's name and version.
 func Key(name, version string) string {
 	if version == "" {
@@ -51,8 +46,13 @@ func Key(name, version string) string {
 	return path.Join(name, "v"+strings.TrimLeft(version, "v"))
 }
 
-// KeyFrom returns a name and version for an arbitrary key.
-func KeyFrom(key string) (string, string) {
+// KeyFor returns a Base plugin's unique identifying string.
+func KeyFor(p Base) string {
+	return Key(p.Name(), p.Version())
+}
+
+// SplitKey returns a name and version for a plugin key.
+func SplitKey(key string) (string, string) {
 	if !strings.Contains(key, "/") {
 		return key, ""
 	}

@@ -47,21 +47,3 @@ func runECmdFunc(gsub plugin.GenericSubcommand, msg string) func(*cobra.Command,
 		return nil
 	}
 }
-
-// noGetterErr returns a nicely formatted error if a plugin Getter
-// (ex. InitPluginGetter) does not exist in the set of plugins versionedPlugins.
-func (c cli) noGetterErr(versionedPlugins []plugin.Base) error {
-	keys := []string{}
-
-	if len(versionedPlugins) == 0 && len(c.cliPluginKeys) != 0 {
-		for name, version := range c.cliPluginKeys {
-			keys = append(keys, plugin.Key(name, version))
-		}
-		return fmt.Errorf("no plugins found for CLI plugin keys %+q, likely a naming discrepancy", keys)
-	}
-
-	for _, p := range versionedPlugins {
-		keys = append(keys, plugin.KeyFor(p))
-	}
-	return fmt.Errorf("no plugin found for project version %q, possible plugins: %+q", c.projectVersion, keys)
-}

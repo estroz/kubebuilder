@@ -74,7 +74,7 @@ func (o *editOptions) LoadConfig() (*config.Config, error) {
 }
 
 func (o *editOptions) Validate(c *config.Config) error {
-	if c.IsV1() {
+	if !c.IsV2() {
 		if c.MultiGroup {
 			return fmt.Errorf("multiple group support can't be enabled for version %s", c.Version)
 		}
