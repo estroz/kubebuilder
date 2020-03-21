@@ -18,7 +18,6 @@ package v1
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -29,7 +28,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/internal/cmdutil"
-	internalconfig "sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/internal/validation"
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
@@ -38,7 +36,7 @@ import (
 )
 
 type initPlugin struct { // nolint:maligned
-	config config.Config
+	config *config.Config
 
 	// boilerplate options
 	license string
@@ -110,26 +108,15 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
 }
 
+func (p *initPlugin) InjectConfig(c *config.Config) {
+	p.config = c
+}
+
 func (p *initPlugin) Run() error {
 	return cmdutil.Run(p)
 }
 
-func (p *initPlugin) SetVersion(v string) {
-	p.config.Version = v
-}
-
-func (p *initPlugin) LoadConfig() (*internalconfig.Config, error) {
-	_, err := internalconfig.Read()
-	if err == nil || os.IsExist(err) {
-		return nil, errors.New("config already initialized")
-	}
-	// Initialize a new config to write.
-	config := internalconfig.New(internalconfig.DefaultPath)
-	config.Config = p.config
-	return config, nil
-}
-
-func (p *initPlugin) Validate(c *internalconfig.Config) error {
+func (p *initPlugin) Validate() error {
 	// Requires go1.11+
 	if !p.skipGoVersionCheck {
 		if err := internal.ValidateGoVersion(); err != nil {
@@ -148,12 +135,12 @@ func (p *initPlugin) Validate(c *internalconfig.Config) error {
 	}
 
 	// Try to guess repository if flag is not set
-	if c.Repo == "" {
+	if p.config.Repo == "" {
 		repoPath, err := internal.FindCurrentRepo()
 		if err != nil {
 			return fmt.Errorf("error finding current repository: %v", err)
 		}
-		c.Repo = repoPath
+		p.config.Repo = repoPath
 	}
 
 	// Verify dep is installed
@@ -165,11 +152,11 @@ func (p *initPlugin) Validate(c *internalconfig.Config) error {
 	return nil
 }
 
-func (p *initPlugin) GetScaffolder(c *internalconfig.Config) (scaffold.Scaffolder, error) { // nolint:unparam
-	return scaffold.NewInitScaffolder(c, p.license, p.owner), nil
+func (p *initPlugin) GetScaffolder() (scaffold.Scaffolder, error) { // nolint:unparam
+	return scaffold.NewInitScaffolder(p.config, p.license, p.owner), nil
 }
 
-func (p *initPlugin) PostScaffold(_ *internalconfig.Config) error {
+func (p *initPlugin) PostScaffold() error {
 	if !p.depFlag.Changed {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Println("Run `dep ensure` to fetch dependencies (Recommended) [y/n]?")

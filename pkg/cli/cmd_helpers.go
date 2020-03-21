@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
 )
 
@@ -39,11 +40,11 @@ func errCmdFunc(err error) func(*cobra.Command, []string) error {
 }
 
 // runECmdFunc returns a cobra RunE function that runs gsub and returns its value.
-func runECmdFunc(gsub plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
+func runECmdFunc(c *config.Config, gsub plugin.GenericSubcommand, msg string) func(*cobra.Command, []string) error { // nolint:interfacer
 	return func(*cobra.Command, []string) error {
 		if err := gsub.Run(); err != nil {
 			return fmt.Errorf("%s: %v", msg, err)
 		}
-		return nil
+		return c.Save()
 	}
 }

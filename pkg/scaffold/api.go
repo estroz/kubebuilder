@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sigs.k8s.io/kubebuilder/internal/config"
 	"sigs.k8s.io/kubebuilder/pkg/model"
+	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/pkg/scaffold/internal/machinery"
 	controllerv1 "sigs.k8s.io/kubebuilder/pkg/scaffold/internal/templates/v1/controller"
@@ -78,7 +78,7 @@ func (s *apiScaffolder) Scaffold() error {
 
 func (s *apiScaffolder) newUniverse() *model.Universe {
 	return model.NewUniverse(
-		model.WithConfig(&s.config.Config),
+		model.WithConfig(s.config),
 		model.WithBoilerplate(s.boilerplate),
 		model.WithResource(s.resource),
 	)
@@ -134,12 +134,7 @@ func (s *apiScaffolder) scaffoldV1() error {
 
 func (s *apiScaffolder) scaffoldV2() error {
 	if s.doResource {
-		// Only save the resource in the config file if it didn't exist
-		if s.config.AddResource(s.resource.GVK()) {
-			if err := s.config.Save(); err != nil {
-				return fmt.Errorf("error updating project file with resource information : %v", err)
-			}
-		}
+		s.config.AddResource(s.resource.GVK())
 
 		if s.config.MultiGroup {
 			fmt.Println(filepath.Join("apis", s.resource.Group, s.resource.Version,
