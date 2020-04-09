@@ -59,6 +59,8 @@ type cli struct {
 	commandName string
 	// Default project version. Used in CLI flag setup.
 	defaultProjectVersion string
+	// Help and examples for a new cli. If these are not set, default
+	longHelp, examples string
 	// Project version to scaffold.
 	projectVersion string
 	// True if the project has config file.
@@ -120,6 +122,16 @@ func WithCommandName(name string) Option {
 func WithDefaultProjectVersion(version string) Option {
 	return func(c *cli) error {
 		c.defaultProjectVersion = version
+		return nil
+	}
+}
+
+// WithCommandHelp is an Option that sets the cli's help and examples, which
+// are returned if the binary is called with top-level --help.
+func WithCommandHelp(longHelp, examples string) Option {
+	return func(c *cli) error {
+		c.longHelp = longHelp
+		c.examples = examples
 		return nil
 	}
 }
@@ -477,10 +489,9 @@ func resolvePluginsByKeys(versionedPlugins []plugin.Base, cliPluginKeys map[stri
 
 // defaultCommand returns the root command without its subcommands.
 func (c cli) defaultCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   c.commandName,
-		Short: "Development kit for building Kubernetes extensions and tools.",
-		Long: fmt.Sprintf(`Development kit for building Kubernetes extensions and tools.
+	longHelp, examples := c.longHelp, c.examples
+	if longHelp == "" {
+		longHelp = fmt.Sprintf(`Development kit for building Kubernetes extensions and tools.
 
 Provides libraries and tools to create new projects, APIs and controllers.
 Includes tools for packaging artifacts into an installer container.
@@ -489,11 +500,11 @@ Typical project lifecycle:
 
 - initialize a project:
 
-  %s init --domain example.com --license apache2 --owner "The Kubernetes authors"
+%s init --domain example.com --license apache2 --owner "The Kubernetes authors"
 
 - create one or more a new resource APIs and add your code to them:
 
-  %s create api --group <group> --version <version> --kind <Kind>
+%s create api --group <group> --version <version> --kind <Kind>
 
 Create resource will prompt the user for if it should scaffold the Resource and / or Controller. To only
 scaffold a Controller for an existing Resource, select "n" for Resource. To only define
@@ -501,28 +512,36 @@ the schema for a Resource without writing a Controller, select "n" for Controlle
 
 After the scaffold is written, api will run make on the project.
 `,
-			c.commandName, c.commandName),
-		Example: fmt.Sprintf(`
-  # Initialize your project
-  %s init --domain example.com --license apache2 --owner "The Kubernetes authors"
+			c.commandName, c.commandName)
+	}
+	if examples == "" {
+		examples = fmt.Sprintf(`
+# Initialize your project
+%s init --domain example.com --license apache2 --owner "The Kubernetes authors"
 
-  # Create a frigates API with Group: ship, Version: v1beta1 and Kind: Frigate
-  %s create api --group ship --version v1beta1 --kind Frigate
+# Create a frigates API with Group: ship, Version: v1beta1 and Kind: Frigate
+%s create api --group ship --version v1beta1 --kind Frigate
 
-  # Edit the API Scheme
-  nano api/v1beta1/frigate_types.go
+# Edit the API Scheme
+nano api/v1beta1/frigate_types.go
 
-  # Edit the Controller
-  nano controllers/frigate_controller.go
+# Edit the Controller
+nano controllers/frigate_controller.go
 
-  # Install CRDs into the Kubernetes cluster using kubectl apply
-  make install
+# Install CRDs into the Kubernetes cluster using kubectl apply
+make install
 
-  # Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
-  make run
+# Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
+make run
 `,
-			c.commandName, c.commandName),
+			c.commandName, c.commandName)
+	}
 
+	return &cobra.Command{
+		Use:     c.commandName,
+		Short:   "Development kit for building Kubernetes extensions and tools.",
+		Long:    longHelp,
+		Example: examples,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cmd.Help(); err != nil {
 				log.Fatal(err)

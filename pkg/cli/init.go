@@ -55,27 +55,24 @@ func (c *cli) newInitCmd() *cobra.Command {
 }
 
 func (c cli) newInitContext() plugin.Context {
-	return plugin.Context{
-		CommandName: c.commandName,
-		Description: `Initialize a new project.
-
-For further help about a specific project version, set --project-version.
-`,
-		Examples: c.getInitHelpExamples(),
-	}
-}
-
-func (c cli) getInitHelpExamples() string {
-	var sb strings.Builder
+	examples := strings.Builder{}
 	for _, version := range c.getAvailableProjectVersions() {
 		rendered := fmt.Sprintf(`  # Help for initializing a project with version %s
   %s init --project-version=%s -h
 
 `,
 			version, c.commandName, version)
-		sb.WriteString(rendered)
+		examples.WriteString(rendered)
 	}
-	return strings.TrimSuffix(sb.String(), "\n\n")
+
+	return plugin.Context{
+		CommandName: c.commandName,
+		Description: `Initialize a new project.
+
+For further help about a specific project version, set --project-version.
+`,
+		Examples: strings.TrimSuffix(examples.String(), "\n\n"),
+	}
 }
 
 func (c cli) getAvailableProjectVersions() (projectVersions []string) {
