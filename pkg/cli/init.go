@@ -135,6 +135,8 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 		if err := init.Run(); err != nil {
 			return fmt.Errorf("failed to initialize project with version %q: %v", c.projectVersion, err)
 		}
+		// Always set layout on init so the plugin doesn't have to.
+		cfg.Layout = plugin.KeyFor(getter)
 		return cfg.Save()
 	}
 }
