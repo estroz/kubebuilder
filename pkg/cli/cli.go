@@ -131,9 +131,6 @@ func WithPlugins(plugins ...plugin.Base) Option {
 	return func(c *cli) error {
 		for _, p := range plugins {
 			for _, version := range p.SupportedProjectVersions() {
-				if _, ok := c.pluginsFromOptions[version]; !ok {
-					c.pluginsFromOptions[version] = []plugin.Base{}
-				}
 				c.pluginsFromOptions[version] = append(c.pluginsFromOptions[version], p)
 			}
 		}
@@ -151,9 +148,6 @@ func WithDefaultPlugins(plugins ...plugin.Base) Option {
 	return func(c *cli) error {
 		for _, p := range plugins {
 			for _, version := range p.SupportedProjectVersions() {
-				if _, ok := c.defaultPluginsFromOptions[version]; !ok {
-					c.defaultPluginsFromOptions[version] = []plugin.Base{}
-				}
 				c.defaultPluginsFromOptions[version] = append(c.defaultPluginsFromOptions[version], p)
 			}
 		}
@@ -196,8 +190,8 @@ func (c *cli) initialize() error {
 		c.projectVersion = projectConfig.Version
 
 		if projectConfig.IsV1() {
-			return fmt.Errorf(noticeColor, "The v1 projects are no longer supported.\n"+
-				"See how to upgrade your project to v2: https://book.kubebuilder.io/migration/guide.html\n")
+			return fmt.Errorf(noticeColor, "project version 1 is no longer supported.\n"+
+				"See how to upgrade your project: https://book.kubebuilder.io/migration/guide.html\n")
 		}
 	} else {
 		return fmt.Errorf("failed to read config: %v", err)
@@ -334,7 +328,6 @@ func (c cli) validate() error {
 
 // validatePlugins validates the name and versions of a list of plugins.
 func validatePlugins(plugins ...plugin.Base) error {
-	pluginNameSet := make(map[string]struct{}, len(plugins))
 	for _, p := range plugins {
 		pluginName := p.Name()
 		if err := plugin.ValidateName(pluginName); err != nil {
@@ -351,12 +344,6 @@ func validatePlugins(plugins ...plugin.Base) error {
 					pluginName, projectVersion, err)
 			}
 		}
-		// Check for duplicate plugin names. Names outside of a version can
-		// conflict because multiple project versions of a plugin may exist.
-		if _, seen := pluginNameSet[pluginName]; seen {
-			return fmt.Errorf("two plugins have the same name: %q", pluginName)
-		}
-		pluginNameSet[pluginName] = struct{}{}
 	}
 	return nil
 }
@@ -387,62 +374,6 @@ func (c cli) buildRootCmd() *cobra.Command {
 	rootCmd.AddCommand(c.newInitCmd())
 
 	return rootCmd
-}
-
-// resolvePluginsByKey finds a plugin for pluginKey if it exactly matches
-// some form of a known plugin's key. Those forms can be a:
-// - Fully qualified key: "go.kubebuilder.io/v2.0.0"
-// - Short key: "go/v2.0.0"
-// - Fully qualified name: "go.kubebuilder.io"
-// - Short name: "go"
-// Some of these keys may conflict, ex. the fully-qualified and short names of
-// "go.kubebuilder.io/v1.0.0" and "go.kubebuilder.io/v2.0.0" have ambiguous
-// unversioned names "go.kubernetes.io" and "go". If pluginKey is ambiguous
-// or does not match any known plugin's key, an error is returned.
-//
-// Note: resolvePluginsByKey returns a slice so initialize() can generalize
-// setting default plugins if no pluginKey is set.
-func resolvePluginsByKey(versionedPlugins []plugin.Base, pluginKey string) ([]plugin.Base, error) {
-	// Make a set of all possible key combinations to check pluginKey against.
-	// If the key is not ambiguous, set a valid pointer to the plugin for that
-	// key, otherwise set a tombstone so we know it is ambiguous. There will
-	// always be at least one key per plugin if their names are fully-qualified.
-	//
-	// Note: this isn't actually that inefficient compared to a memory-efficient
-	// solution since we're working with very small N's; it is also very simple.
-	allPluginKeyCombos := make(map[string]*plugin.Base)
-	for i, p := range versionedPlugins {
-		key := plugin.KeyFor(p)
-		// Short-circuit if we have an exact match.
-		if key == pluginKey {
-			return []plugin.Base{p}, nil
-		}
-		name := p.Name()
-		keys := []string{key, name}
-		if shortName := plugin.GetShortName(name); name != shortName {
-			keys = append(keys, shortName)
-			keys = append(keys, plugin.Key(shortName, p.Version()))
-		}
-
-		pp := &versionedPlugins[i]
-		for _, k := range keys {
-			if _, hasKey := allPluginKeyCombos[k]; hasKey {
-				allPluginKeyCombos[k] = nil
-			} else {
-				allPluginKeyCombos[k] = pp
-			}
-		}
-	}
-
-	pp, hasKey := allPluginKeyCombos[pluginKey]
-	if !hasKey {
-		return nil, fmt.Errorf("plugin key %q does not match a known plugin", pluginKey)
-	}
-	if pp == nil {
-		return nil, fmt.Errorf("plugin key %q matches more than one known plugin", pluginKey)
-	}
-
-	return []plugin.Base{*pp}, nil
 }
 
 // defaultCommand returns the root command without its subcommands.
