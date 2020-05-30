@@ -14,20 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v2
+package base
 
 import (
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/kubebuilder/pkg/plugin"
-	"sigs.k8s.io/kubebuilder/pkg/plugin/base"
 )
 
 const (
 	pluginName    = "go" + plugin.DefaultNameQualifier
-	pluginVersion = "v2.0"
+	pluginVersion = "v0.0"
 )
 
-var supportedProjectVersions = []string{config.Version3Alpha}
+var supportedProjectVersions = []string{config.Version2}
 
 var (
 	_ plugin.Base                      = Plugin{}
@@ -38,8 +37,8 @@ var (
 
 type Plugin struct {
 	InitPlugin
-	base.CreateAPIPlugin
-	base.CreateWebhookPlugin
+	CreateAPIPlugin
+	CreateWebhookPlugin
 }
 
 func (Plugin) Name() string                                   { return pluginName }
@@ -48,13 +47,3 @@ func (Plugin) SupportedProjectVersions() []string             { return supported
 func (p Plugin) GetInitPlugin() plugin.Init                   { return &p.InitPlugin }
 func (p Plugin) GetCreateAPIPlugin() plugin.CreateAPI         { return &p.CreateAPIPlugin }
 func (p Plugin) GetCreateWebhookPlugin() plugin.CreateWebhook { return &p.CreateWebhookPlugin }
-
-// InitPlugin wraps the base Init plugin for plugin v2.0.
-type InitPlugin struct {
-	base.InitPlugin
-}
-
-func (p *InitPlugin) InjectConfig(c *config.Config) {
-	c.Layout = plugin.KeyFor(Plugin{})
-	p.InitPlugin.InjectConfig(c)
-}

@@ -25,13 +25,15 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 )
 
+// DefaultNameQualifier is the suffix for all kubebuilder plugin names.
 const DefaultNameQualifier = ".kubebuilder.io"
 
 type Base interface {
 	// Name returns a DNS1123 label string defining the plugin type.
 	// For example, Kubebuilder's main plugin would return "go".
 	Name() string
-	// Version returns the plugin's semantic version, ex. "v1.2.3".
+	// Version returns the plugin's version. This version, while being a
+	// semantic version, only considers major and minor numbers, ex. "v1.2".
 	//
 	// Note: this version is different from config version.
 	Version() string

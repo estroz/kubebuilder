@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v2
+package base
 
 import (
 	"fmt"
@@ -32,11 +32,12 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/scaffold"
 )
 
-type initPlugin struct {
-	config *config.Config
+// InitPlugin scaffolds a Go controller project.
+type InitPlugin struct {
+	Config *config.Config
+
 	// For help text.
 	commandName string
-
 	// boilerplate options
 	license string
 	owner   string
@@ -47,11 +48,11 @@ type initPlugin struct {
 }
 
 var (
-	_ plugin.Init        = &initPlugin{}
-	_ cmdutil.RunOptions = &initPlugin{}
+	_ plugin.Init        = &InitPlugin{}
+	_ cmdutil.RunOptions = &InitPlugin{}
 )
 
-func (p *initPlugin) UpdateContext(ctx *plugin.Context) {
+func (p *InitPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Initialize a new project including vendor/ directory and Go package directories.
 
 Writes the following files:
@@ -74,7 +75,7 @@ project will prompt the user to run 'dep ensure' after writing the project files
 	p.commandName = ctx.CommandName
 }
 
-func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
+func (p *InitPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&p.skipGoVersionCheck, "skip-go-version-check",
 		false, "if specified, skip checking the Go version")
 
@@ -87,24 +88,20 @@ func (p *initPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.owner, "owner", "", "owner to add to the copyright")
 
 	// project args
-	fs.StringVar(&p.config.Repo, "repo", "", "name to use for go module (e.g., github.com/user/repo), "+
+	fs.StringVar(&p.Config.Repo, "repo", "", "name to use for go module (e.g., github.com/user/repo), "+
 		"defaults to the go package of the current working directory.")
-	fs.StringVar(&p.config.Domain, "domain", "my.domain", "domain for groups")
+	fs.StringVar(&p.Config.Domain, "domain", "my.domain", "domain for groups")
 }
 
-func (p *initPlugin) InjectConfig(c *config.Config) {
-	// v3 project configs get a 'layout' value.
-	if c.IsV3() {
-		c.Layout = plugin.KeyFor(Plugin{})
-	}
-	p.config = c
+func (p *InitPlugin) InjectConfig(c *config.Config) {
+	p.Config = c
 }
 
-func (p *initPlugin) Run() error {
+func (p *InitPlugin) Run() error {
 	return cmdutil.Run(p)
 }
 
-func (p *initPlugin) Validate() error {
+func (p *InitPlugin) Validate() error {
 	// Requires go1.11+
 	if !p.skipGoVersionCheck {
 		if err := internal.ValidateGoVersion(); err != nil {
@@ -123,22 +120,22 @@ func (p *initPlugin) Validate() error {
 	}
 
 	// Try to guess repository if flag is not set.
-	if p.config.Repo == "" {
+	if p.Config.Repo == "" {
 		repoPath, err := internal.FindCurrentRepo()
 		if err != nil {
 			return fmt.Errorf("error finding current repository: %v", err)
 		}
-		p.config.Repo = repoPath
+		p.Config.Repo = repoPath
 	}
 
 	return nil
 }
 
-func (p *initPlugin) GetScaffolder() (scaffold.Scaffolder, error) {
-	return scaffold.NewInitScaffolder(p.config, p.license, p.owner), nil
+func (p *InitPlugin) GetScaffolder() (scaffold.Scaffolder, error) {
+	return scaffold.NewInitScaffolder(p.Config, p.license, p.owner), nil
 }
 
-func (p *initPlugin) PostScaffold() error {
+func (p *InitPlugin) PostScaffold() error {
 	if !p.fetchDeps {
 		fmt.Println("Skipping fetching dependencies.")
 		return nil

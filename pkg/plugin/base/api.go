@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v2
+package base
 
 import (
 	"bufio"
@@ -37,15 +37,15 @@ import (
 	"sigs.k8s.io/kubebuilder/plugins/addon"
 )
 
-type createAPIPlugin struct {
-	config *config.Config
+// CreateAPIPlugin scaffolds a Go API definition and manifests for a resource.
+type CreateAPIPlugin struct {
+	Config *config.Config
 
 	// pattern indicates that we should use a plugin to build according to a pattern
 	pattern string
 
-	resource *resource.Options
-
 	// Check if we have to scaffold resource and/or controller
+	resource       *resource.Options
 	resourceFlag   *pflag.Flag
 	controllerFlag *pflag.Flag
 	doResource     bool
@@ -59,11 +59,11 @@ type createAPIPlugin struct {
 }
 
 var (
-	_ plugin.CreateAPI   = &createAPIPlugin{}
-	_ cmdutil.RunOptions = &createAPIPlugin{}
+	_ plugin.CreateAPI   = &CreateAPIPlugin{}
+	_ cmdutil.RunOptions = &CreateAPIPlugin{}
 )
 
-func (p createAPIPlugin) UpdateContext(ctx *plugin.Context) {
+func (p CreateAPIPlugin) UpdateContext(ctx *plugin.Context) {
 	ctx.Description = `Scaffold a Kubernetes API by creating a Resource definition and / or a Controller.
 
 create resource will prompt the user for if it should scaffold the Resource and / or Controller.  To only
@@ -93,7 +93,7 @@ After the scaffold is written, api will run make on the project.
 		ctx.CommandName)
 }
 
-func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
+func (p *CreateAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&p.runMake, "make", true, "if true, run make after generating files")
 
 	fs.BoolVar(&p.doResource, "resource", true,
@@ -117,15 +117,15 @@ func (p *createAPIPlugin) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&p.resource.Namespaced, "namespaced", true, "resource is namespaced")
 }
 
-func (p *createAPIPlugin) InjectConfig(c *config.Config) {
-	p.config = c
+func (p *CreateAPIPlugin) InjectConfig(c *config.Config) {
+	p.Config = c
 }
 
-func (p *createAPIPlugin) Run() error {
+func (p *CreateAPIPlugin) Run() error {
 	return cmdutil.Run(p)
 }
 
-func (p *createAPIPlugin) Validate() error {
+func (p *CreateAPIPlugin) Validate() error {
 	if err := p.resource.Validate(); err != nil {
 		return err
 	}
@@ -143,13 +143,13 @@ func (p *createAPIPlugin) Validate() error {
 	// In case we want to scaffold a resource API we need to do some checks
 	if p.doResource {
 		// Check that resource doesn't exist or flag force was set
-		if !p.force && p.config.HasResource(p.resource.GVK()) {
+		if !p.force && p.Config.HasResource(p.resource.GVK()) {
 			return errors.New("API resource already exists")
 		}
 
 		// Check that the provided group can be added to the project
-		if (p.config.IsV2() || p.config.IsV3()) && !p.config.MultiGroup &&
-			len(p.config.Resources) != 0 && !p.config.HasGroup(p.resource.Group) {
+		if (p.Config.IsV2() || p.Config.IsV3()) && !p.Config.MultiGroup &&
+			len(p.Config.Resources) != 0 && !p.Config.HasGroup(p.resource.Group) {
 			return fmt.Errorf("multiple groups are not allowed by default, to enable multi-group visit %s",
 				"kubebuilder.io/migration/multi-group.html")
 		}
@@ -158,7 +158,7 @@ func (p *createAPIPlugin) Validate() error {
 	return nil
 }
 
-func (p *createAPIPlugin) GetScaffolder() (scaffold.Scaffolder, error) {
+func (p *CreateAPIPlugin) GetScaffolder() (scaffold.Scaffolder, error) {
 	// Load the boilerplate
 	bp, err := ioutil.ReadFile(filepath.Join("hack", "boilerplate.go.txt")) // nolint:gosec
 	if err != nil {
@@ -177,11 +177,11 @@ func (p *createAPIPlugin) GetScaffolder() (scaffold.Scaffolder, error) {
 	}
 
 	// Create the actual resource from the resource options
-	res := p.resource.NewResource(p.config, p.doResource)
-	return scaffold.NewAPIScaffolder(p.config, string(bp), res, p.doResource, p.doController, plugins), nil
+	res := p.resource.NewResource(p.Config, p.doResource)
+	return scaffold.NewAPIScaffolder(p.Config, string(bp), res, p.doResource, p.doController, plugins), nil
 }
 
-func (p *createAPIPlugin) PostScaffold() error {
+func (p *CreateAPIPlugin) PostScaffold() error {
 	if p.runMake {
 		return internal.RunCmd("Running make", "make")
 	}
