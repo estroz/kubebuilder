@@ -61,13 +61,24 @@ func (c cli) newInitCmd() *cobra.Command {
 	return cmd
 }
 
+const specificHelpNoticeTmpl = `
+This help is specific to plugin %q, the default plugin for project version %q.
+For further help about a specific plugin or project version, set --plugins or
+--project-version, respectively.
+`
+
+// newInitContext returns a context with help specific to the default plugin
+// and directions to set --plugins or --project-version for different help.
 func (c cli) newInitContext() plugin.Context {
 	return plugin.Context{
 		CommandName: c.commandName,
-		Description: `Initialize a new project.
+		Description: fmt.Sprintf(`Initialize a new project.
 
-For further help about a specific project version, set --project-version.
-`,
+This help is for default plugin %s and default project version %s.
+For further help about a specific plugin or project version, set --plugins or
+--project-version, respectively.
+
+`, c.defaultPlugins[c.projectVersion], c.projectVersion),
 		Examples: c.getInitHelpExamples(),
 	}
 }
@@ -80,6 +91,14 @@ func (c cli) getInitHelpExamples() string {
 
 `,
 			c.commandName, version)
+		sb.WriteString(rendered)
+	}
+	for _, plugin := range c.getAvailablePlugins() {
+		rendered := fmt.Sprintf(`  # Help for initializing a project with plugin %[2]s
+  %[1]s init --plugins=%[2]s -h
+
+`,
+			c.commandName, plugin)
 		sb.WriteString(rendered)
 	}
 	return strings.TrimSuffix(sb.String(), "\n\n")
@@ -148,6 +167,10 @@ func (c cli) bindInit(ctx plugin.Context, cmd *cobra.Command) {
 	subcommand.UpdateContext(&ctx)
 	cmd.Long = ctx.Description
 	cmd.Example = ctx.Examples
+	if c.doHelp {
+		cmd.Long = fmt.Sprintf(specificHelpNoticeTmpl, plugin.KeyFor(initPlugin), c.projectVersion) + cmd.Long
+		return
+	}
 	cmd.RunE = func(*cobra.Command, []string) error {
 		// Check if a config is initialized in the command runner so the check
 		// doesn't erroneously fail other commands used in initialized projects.
