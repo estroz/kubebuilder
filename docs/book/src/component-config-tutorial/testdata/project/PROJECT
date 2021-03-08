@@ -7,21 +7,34 @@ repo: tutorial.kubebuilder.io/project
 resources:
 - api:
     crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: tutorial.kubebuilder.io
   group: batch
   kind: CronJob
+  path: tutorial.kubebuilder.io/project/apis/batch/v1
   version: v1
   webhooks:
+    defaulting: true
+    validation: true
     webhookVersion: v1
 - api:
     crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: tutorial.kubebuilder.io
   group: batch
   kind: CronJob
+  path: tutorial.kubebuilder.io/project/apis/batch/v2
   version: v2
   webhooks:
     webhookVersion: v1
 - api:
     crdVersion: v1
+    namespaced: true
+  domain: tutorial.kubebuilder.io
   group: config
   kind: ProjectConfig
+  path: tutorial.kubebuilder.io/project/apis/config/v2
   version: v2
 version: "3"

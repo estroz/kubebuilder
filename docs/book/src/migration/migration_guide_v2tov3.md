@@ -39,7 +39,10 @@ go mod init tutorial.kubebuilder.io/migration-project
 <aside class="note warning">
 <h1> Migrating to Kubebuilder v3 while staying on the go/v2 plugin </h1>
 
-You can use `--plugins=go/v2` if you wish to continue using "`Kubebuilder 2.x`" layout and avoid dealing with the breaking changes that will be faced because of the default upper versions which will be used now. See that the [controller-tools][controller-tools] `v0.4.1` & [controller-runtime][controller-runtime] `v0.7.0` are just used by default with the `go/v3` plugin layout. 
+You can use `--plugins=go/v2` if you wish to continue using "`Kubebuilder 2.x`" layout
+and avoid dealing with the breaking changes that will be faced because of the default upper
+versions which will be used now. See that the [controller-tools][controller-tools] `v0.4.1` and
+[controller-runtime][controller-runtime] `v0.7.2` are just used by default with the `go/v3` plugin layout.
 </aside>
 
 <aside class="note">
@@ -85,7 +88,7 @@ kubebuilder create api --group batch --version v1 --kind CronJob
 <aside class="note">
 <h1>How to still keep `apiextensions.k8s.io/v1beta1` for CRDs?</h1>
 
-From now on, the CRDs that will be created by controller-gen will be using the Kubernetes API version `apiextensions.k8s.io/v1`  by default, instead of `apiextensions.k8s.io/v1beta1`. 
+From now on, the CRDs that will be created by controller-gen will be using the Kubernetes API version `apiextensions.k8s.io/v1`  by default, instead of `apiextensions.k8s.io/v1beta1`.
 
 The `apiextensions.k8s.io/v1beta1` was deprecated in Kubernetes `1.16` and will be removed in Kubernetes `1.22`.
 
@@ -112,17 +115,19 @@ Now, let's migrate the controller code from `controllers/cronjob_controller.go` 
 
 The new `Reconcile` method receives the context as an argument now, instead of having to create it with `context.Background()`. You can copy the rest of the code in your old controller to the scaffolded methods replacing:
 
-```go 
+```go
 func (r *CronJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-    ctx := context.Background() 
-    log := r.Log.WithValues("cronjob", req.NamespacedName)
+    ctx := context.Background()
+    ...
+}
 ```
 
 With:
 
-```go 
+```go
 func (r *CronJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("cronjob", req.NamespacedName)
+    ...
+}
 ```
 
 <aside class="note warning">
@@ -152,17 +157,17 @@ kubebuilder create webhook --group batch --version v1 --kind CronJob --defaultin
 <aside class="note">
 <h1>How to keep using `apiextensions.k8s.io/v1beta1` for Webhooks?</h1>
 
-From now on, the Webhooks that will be created by Kubebuilder using by default the Kubernetes API version `admissionregistration.k8s.io/v1` instead of `admissionregistration.k8s.io/v1beta1` and the `cert-manager.io/v1` to replace `cert-manager.io/v1alpha2`. 
+From now on, the Webhooks that will be created by Kubebuilder using by default the Kubernetes API version `admissionregistration.k8s.io/v1` instead of `admissionregistration.k8s.io/v1beta1` and the `cert-manager.io/v1` to replace `cert-manager.io/v1alpha2`.
 
 Note that `apiextensions/v1beta1` and `admissionregistration.k8s.io/v1beta1` were deprecated in Kubernetes `1.16` and will be removed  in Kubernetes `1.22`. If you use `apiextensions/v1` and `admissionregistration.k8s.io/v1` then you need to use `cert-manager.io/v1` which will be the API adopted per Kubebuilder CLI by default in this case.  
 
-The API `cert-manager.io/v1alpha2` is not compatible with the latest Kubernetes API versions. 
+The API `cert-manager.io/v1alpha2` is not compatible with the latest Kubernetes API versions.
 
 So, if you would like to keep using the previous version use the flag `--webhook-version=v1beta1` in the above command which is only needed if you want your operator to support Kubernetes `1.15` and earlier.
 
 </aside>
 
-Now, let's copy the webhook definition from `api/v1/<kind>_webhook.go` from our old project to the new one. 
+Now, let's copy the webhook definition from `api/v1/<kind>_webhook.go` from our old project to the new one.
 
 ## Others
 
