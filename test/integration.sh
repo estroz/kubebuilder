@@ -18,9 +18,6 @@ source $(dirname "$0")/common.sh
 
 header_text "Running kubebuilder integration tests"
 
-build_kb
-pushd .
-
 kb_test_dir=$kb_root_dir/test
 kb_test_cache_dir=$kb_root_dir/cache
 
@@ -122,5 +119,3 @@ test_create_namespaced_api_only
 prepare_test_dir
 dump_project "init"
 test_create_core_type_controller
-
-popd

@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-build_kb
-export PATH=$kb_root_dir/bin:$PATH
 fetch_tools
 install_kind
 
@@ -38,7 +36,7 @@ function create_cluster {
 #   kind_cluster=<kind cluster name>
 #   delete_cluster
 function delete_cluster {
-    kind delete cluster --name $kind_cluster
+  kind delete cluster --name $kind_cluster
 }
 
 function test_cluster {

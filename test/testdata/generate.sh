@@ -111,8 +111,6 @@ function scaffold_test_project {
   popd
 }
 
-build_kb
-
 # Project version 2 uses plugin go/v2 (default).
 scaffold_test_project project-v2 --project-version=2
 scaffold_test_project project-v2-multigroup --project-version=2

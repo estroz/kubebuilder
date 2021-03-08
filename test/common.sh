@@ -60,6 +60,7 @@ function header_text {
 
 tmp_root=/tmp
 kb_root_dir=$tmp_root/kubebuilder
+kb=./testbin/kubebuilder
 
 # Skip fetching and untaring the tools by setting the SKIP_FETCH_TOOLS variable
 # in your environment to any value:
@@ -76,16 +77,7 @@ function prepare_staging_dir {
 
   if [ -z "$SKIP_FETCH_TOOLS" ]; then
     rm -rf "$kb_root_dir"
-  else
-    rm -f "$kb_root_dir/bin/kubebuilder"
   fi
-}
-
-# Build kubebuilder
-function build_kb {
-  header_text "Building kubebuilder"
-  go build -o $kb_root_dir/bin/kubebuilder ./cmd
-  kb=$kb_root_dir/bin/kubebuilder
 }
 
 # Fetch k8s API gen tools and make it available under kb_root_dir/bin.

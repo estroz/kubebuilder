@@ -67,7 +67,7 @@ generate: generate-testdata ## Update/generate all mock data. You should run thi
 	go mod tidy
 
 .PHONY: generate-testdata
-generate-testdata: ## Update/generate the testdata in $GOPATH/src/sigs.k8s.io/kubebuilder
+generate-testdata: build ## Update/generate the testdata in $GOPATH/src/sigs.k8s.io/kubebuilder
 	./test/testdata/generate.sh
 
 .PHONY: lint
@@ -86,6 +86,9 @@ golangci-lint:
 	}
 
 ##@ Tests
+
+build-test:
+	go build $(LD_FLAGS) -o testbin/kubebuilder ./cmd
 
 .PHONY: test
 test: test-unit test-integration test-testdata ## Run the unit and integration tests (used in the CI)
