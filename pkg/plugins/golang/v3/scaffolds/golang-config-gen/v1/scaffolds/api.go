@@ -18,6 +18,8 @@ package scaffolds
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/afero"
 
@@ -25,12 +27,12 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/model"
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/resource"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds/internal/templates"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds/internal/templates/api"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds/internal/templates/config/configgen"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds/internal/templates/config/samples"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds/internal/templates/controllers"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds/internal/templates/hack"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/golang-config-gen/v1/scaffolds/internal/templates/config/configgen"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates/api"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates/config/samples"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates/controllers"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates/hack"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/internal/cmdutil"
 )
 
@@ -103,15 +105,20 @@ func (s *apiScaffolder) Scaffold() error {
 	}
 
 	if doAPI {
+		sample := &samples.CRDSample{Force: s.force}
+		if !s.withKustomize {
+			if err := sample.SetTemplateDefaults(); err != nil {
+				return err
+			}
+			sample.Path = strings.TrimPrefix(sample.Path, "config"+string(filepath.Separator))
+		}
+
 		if err := scaffold.Execute(
 			&api.Types{Force: s.force},
 			&api.Group{},
 			// Updates conversion CRD name set.
 			&configgen.ConfigGenUpdater{WithKustomize: s.withKustomize},
-			&samples.CustomResource{
-				WithKustomize: s.withKustomize,
-				Force:         s.force,
-			},
+			sample,
 		); err != nil {
 			return fmt.Errorf("error scaffolding APIs: %v", err)
 		}

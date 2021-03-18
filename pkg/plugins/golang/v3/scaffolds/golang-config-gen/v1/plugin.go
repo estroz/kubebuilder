@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/stage"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
+	gov3 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3"
 )
 
 const pluginName = "go-config-gen" + plugins.DefaultNameQualifier
@@ -38,7 +39,8 @@ type Plugin struct {
 	initSubcommand
 	createAPISubcommand
 	createWebhookSubcommand
-	editSubcommand
+
+	v3 gov3.Plugin
 }
 
 // Name returns the name of the plugin
@@ -48,7 +50,7 @@ func (Plugin) Name() string { return pluginName }
 func (Plugin) Version() plugin.Version { return pluginVersion }
 
 // SupportedProjectVersions returns an array with all project versions supported by the plugin
-func (Plugin) SupportedProjectVersions() []config.Version { return supportedProjectVersions }
+func (p Plugin) SupportedProjectVersions() []config.Version { return p.v3.SupportedProjectVersions() }
 
 // GetInitSubcommand will return the subcommand which is responsible for initializing and common scaffolding
 func (p Plugin) GetInitSubcommand() plugin.InitSubcommand { return &p.initSubcommand }
@@ -62,4 +64,4 @@ func (p Plugin) GetCreateWebhookSubcommand() plugin.CreateWebhookSubcommand {
 }
 
 // GetEditSubcommand will return the subcommand which is responsible for editing the scaffold of the project
-func (p Plugin) GetEditSubcommand() plugin.EditSubcommand { return &p.editSubcommand }
+func (p Plugin) GetEditSubcommand() plugin.EditSubcommand { return p.v3.GetEditSubcommand() }

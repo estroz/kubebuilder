@@ -22,9 +22,9 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/cli"
 	cfgv2 "sigs.k8s.io/kubebuilder/v3/pkg/config/v2"
 	cfgv3 "sigs.k8s.io/kubebuilder/v3/pkg/config/v3"
-	goconfiggenv1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1"
 	pluginv2 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v2"
 	pluginv3 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3"
+	goconfiggenv1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/golang-config-gen/v1"
 )
 
 func main() {

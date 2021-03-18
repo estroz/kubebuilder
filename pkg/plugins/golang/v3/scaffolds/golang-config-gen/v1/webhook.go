@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
 	pluginutil "sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 	goPlugin "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/golang-config-gen/v1/scaffolds"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/internal/cmdutil"
 )
 
@@ -137,7 +137,7 @@ func (p *createWebhookSubcommand) Validate() error {
 }
 
 func (p *createWebhookSubcommand) GetScaffolder() (cmdutil.Scaffolder, error) {
-	return scaffolds.NewWebhookScaffolder(p.config, p.resource, p.force, p.pconfig.WithKustomize), nil
+	return scaffolds.NewWebhookScaffolder(p.config, p.resource, p.force), nil
 }
 
 func (p *createWebhookSubcommand) PostScaffold() error {

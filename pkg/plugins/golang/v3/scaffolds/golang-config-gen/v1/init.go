@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang-config-gen/v1/scaffolds"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/golang-config-gen/v1/scaffolds"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/internal/cmdutil"
 )
 
