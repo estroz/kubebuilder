@@ -44,39 +44,10 @@ func WithVersion(version string) Option {
 	}
 }
 
-// WithDefaultProjectVersion is an Option that sets the CLI's default project version.
-//
-// Setting an invalid version results in an error.
-func WithDefaultProjectVersion(version config.Version) Option {
+// WithDescription is an Option that sets the CLI's root description.
+func WithDescription(description string) Option {
 	return func(c *CLI) error {
-		if err := version.Validate(); err != nil {
-			return fmt.Errorf("broken pre-set default project version %q: %v", version, err)
-		}
-		c.defaultProjectVersion = version
-		return nil
-	}
-}
-
-// WithDefaultPlugins is an Option that sets the CLI's default plugins.
-//
-// Specifying any invalid plugin results in an error.
-func WithDefaultPlugins(projectVersion config.Version, plugins ...plugin.Plugin) Option {
-	return func(c *CLI) error {
-		if err := projectVersion.Validate(); err != nil {
-			return fmt.Errorf("broken pre-set project version %q for default plugins: %v", projectVersion, err)
-		}
-		if len(plugins) == 0 {
-			return fmt.Errorf("empty set of plugins provided for project version %q", projectVersion)
-		}
-		for _, p := range plugins {
-			if err := plugin.Validate(p); err != nil {
-				return fmt.Errorf("broken pre-set default plugin %q: %v", plugin.KeyFor(p), err)
-			}
-			if !plugin.SupportsVersion(p, projectVersion) {
-				return fmt.Errorf("default plugin %q doesn't support version %q", plugin.KeyFor(p), projectVersion)
-			}
-			c.defaultPlugins[projectVersion] = append(c.defaultPlugins[projectVersion], plugin.KeyFor(p))
-		}
+		c.description = description
 		return nil
 	}
 }
@@ -96,6 +67,43 @@ func WithPlugins(plugins ...plugin.Plugin) Option {
 			}
 			c.plugins[key] = p
 		}
+		return nil
+	}
+}
+
+// WithDefaultPlugins is an Option that sets the CLI's default plugins.
+//
+// Specifying any invalid plugin results in an error.
+func WithDefaultPlugins(projectVersion config.Version, plugins ...plugin.Plugin) Option {
+	return func(c *CLI) error {
+		if err := projectVersion.Validate(); err != nil {
+			return fmt.Errorf("broken pre-set project version %q for default plugins: %w", projectVersion, err)
+		}
+		if len(plugins) == 0 {
+			return fmt.Errorf("empty set of plugins provided for project version %q", projectVersion)
+		}
+		for _, p := range plugins {
+			if err := plugin.Validate(p); err != nil {
+				return fmt.Errorf("broken pre-set default plugin %q: %v", plugin.KeyFor(p), err)
+			}
+			if !plugin.SupportsVersion(p, projectVersion) {
+				return fmt.Errorf("default plugin %q doesn't support version %q", plugin.KeyFor(p), projectVersion)
+			}
+			c.defaultPlugins[projectVersion] = append(c.defaultPlugins[projectVersion], plugin.KeyFor(p))
+		}
+		return nil
+	}
+}
+
+// WithDefaultProjectVersion is an Option that sets the CLI's default project version.
+//
+// Setting an invalid version results in an error.
+func WithDefaultProjectVersion(version config.Version) Option {
+	return func(c *CLI) error {
+		if err := version.Validate(); err != nil {
+			return fmt.Errorf("broken pre-set default project version %q: %v", version, err)
+		}
+		c.defaultProjectVersion = version
 		return nil
 	}
 }
