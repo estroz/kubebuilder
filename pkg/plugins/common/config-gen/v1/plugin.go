@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
 )
 
-const pluginName = "go-config-gen" + plugins.DefaultNameQualifier
+const pluginName = "config-gen.common." + plugins.DefaultNameQualifier
 
 var (
 	supportedProjectVersions = []config.Version{cfgv3.Version}

@@ -25,7 +25,8 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/stage"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
-	kustomizecommonv1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1"
+	commonconfiggenv1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/config-gen/v1"
+	commonkustomizev1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang"
 	declarativev1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/declarative/v1"
 	golangv2 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v2"
@@ -36,13 +37,13 @@ func main() {
 
 	// Bundle plugin which built the golang projects scaffold by Kubebuilder go/v3
 	gov3Bundle, _ := plugin.NewBundle(golang.DefaultNameQualifier, plugin.Version{Number: 3},
-		kustomizecommonv1.Plugin{},
+		commonkustomizev1.Plugin{},
 		golangv3.Plugin{},
 	)
-	goConfigGenv3Bundle, _ := plugin.NewBundle("config-gen.go"+plugins.DefaultNameQualifier,
+	goConfigGenv3Bundle, _ := plugin.NewBundle("config-gen.go."+plugins.DefaultNameQualifier,
 		plugin.Version{Number: 1, Stage: stage.Alpha},
-		kustomizecommonv1.Plugin{},
 		golangv3.Plugin{},
+		commonconfiggenv1.Plugin{},
 	)
 
 	c, err := cli.New(
@@ -52,7 +53,8 @@ func main() {
 			golangv2.Plugin{},
 			gov3Bundle,
 			goConfigGenv3Bundle,
-			&kustomizecommonv1.Plugin{},
+			&commonkustomizev1.Plugin{},
+			&commonconfiggenv1.Plugin{},
 			&declarativev1.Plugin{},
 		),
 		cli.WithDefaultPlugins(cfgv2.Version, golangv2.Plugin{}),

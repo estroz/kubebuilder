@@ -18,7 +18,6 @@ package configgen
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 )
@@ -34,7 +33,6 @@ type ConfigGen struct {
 	machinery.ComponentConfigMixin
 
 	// WithKustomize determines whether this file will be used as a kustomize transformer or directly by kubebuilder.
-	// It controls the path of this file and files referenced by it.
 	WithKustomize bool
 
 	// Manager image tag.
@@ -44,11 +42,7 @@ type ConfigGen struct {
 // SetTemplateDefaults implements machinery.Template
 func (f *ConfigGen) SetTemplateDefaults() error {
 	if f.Path == "" {
-		if f.WithKustomize {
-			f.Path = filepath.Join("config", "configgen", "kubebuilderconfiggen.yaml")
-		} else {
-			f.Path = "kubebuilderconfiggen.yaml"
-		}
+		f.Path = "kubebuilderconfiggen.yaml"
 	}
 
 	if f.Image == "" {
@@ -59,6 +53,8 @@ func (f *ConfigGen) SetTemplateDefaults() error {
 		machinery.NewMarkerFor(f.Path, crdName),
 	)
 
+	f.IfExistsAction = machinery.Error
+
 	return nil
 }
 
@@ -68,27 +64,20 @@ var _ machinery.Inserter = &ConfigGenUpdater{}
 type ConfigGenUpdater struct { //nolint:golint
 	machinery.ResourceMixin
 
-	// WithKustomize determines whether this file will be used as a kustomize transformer or directly by kubebuilder.
-	// It controls the path of this file and files referenced by it.
-	WithKustomize bool
-
 	path string
 }
 
 // GetPath implements machinery.Builder
 func (f *ConfigGenUpdater) GetPath() string {
-	if f.path != "" {
-		return f.path
+	if f.path == "" {
+		f.path = "kubebuilderconfiggen.yaml"
 	}
-	s := ConfigGen{WithKustomize: f.WithKustomize}
-	_ = s.SetTemplateDefaults()
-	f.path = s.Path
 	return f.path
 }
 
 // GetIfExistsAction implements machinery.Builder
-func (*ConfigGenUpdater) GetIfExistsAction() machinery.IfExistsAction {
-	return machinery.OverwriteFile
+func (f *ConfigGenUpdater) GetIfExistsAction() machinery.IfExistsAction {
+	return machinery.Error
 }
 
 const (

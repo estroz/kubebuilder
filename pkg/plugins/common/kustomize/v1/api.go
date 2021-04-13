@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	"errors"
+	"strconv"
 
 	"github.com/spf13/pflag"
 
@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/config-gen/v1/scaffolds"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds"
 )
 
 var _ plugin.CreateAPISubcommand = &createAPISubcommand{}
@@ -33,10 +33,12 @@ var _ plugin.CreateAPISubcommand = &createAPISubcommand{}
 type createAPISubcommand struct {
 	config   config.Config
 	resource *resource.Resource
+
+	flagSet *pflag.FlagSet
 }
 
 func (p *createAPISubcommand) UpdateMetadata(plugin.CLIMetadata, *plugin.SubcommandMetadata) {}
-func (p *createAPISubcommand) BindFlags(fs *pflag.FlagSet)                                   {}
+func (p *createAPISubcommand) BindFlags(fs *pflag.FlagSet)                                   { p.flagSet = fs }
 
 func (p *createAPISubcommand) InjectConfig(c config.Config) error {
 	p.config = c
@@ -48,16 +50,15 @@ func (p *createAPISubcommand) InjectResource(res *resource.Resource) error {
 	return nil
 }
 
-func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
-	cfg := Config{}
-	if err := p.config.DecodePluginConfig(pluginName, &cfg); err != nil {
-		keyNotFoundErr := config.PluginKeyNotFoundError{}
-		if !errors.As(err, &keyNotFoundErr) {
+func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) (err error) {
+	var force bool
+	if forceFlag := p.flagSet.Lookup("force"); forceFlag != nil {
+		if force, err = strconv.ParseBool(forceFlag.Value.String()); err != nil {
 			return err
 		}
-	}
 
-	scaffolder := scaffolds.NewAPIScaffolder(p.config, p.resource, cfg.WithKustomize)
+	}
+	scaffolder := scaffolds.NewAPIScaffolder(p.config, *p.resource, force)
 	scaffolder.InjectFS(fs)
 	return scaffolder.Scaffold()
 }

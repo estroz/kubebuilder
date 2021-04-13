@@ -17,7 +17,10 @@ limitations under the License.
 package scaffolds
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
@@ -60,24 +63,43 @@ func (s *apiScaffolder) Scaffold() error {
 	)
 
 	if s.resource.HasAPI() {
-		fmt.Println("Creating config-gen files for you to edit...")
-
-		// TODO(estroz): copy sample file.
-		// sample := &samples.CRDSample{Force: s.force}
-		// if !s.withKustomize {
-		// 	if err := sample.SetTemplateDefaults(); err != nil {
-		// 		return err
-		// 	}
-		// 	sample.Path = strings.TrimPrefix(sample.Path, "config"+string(filepath.Separator))
-		// }
+		fmt.Println("Writing config-gen manifests for you to edit...")
 
 		if err := scaffold.Execute(
-			// Updates conversion CRD name set.
-			&configgen.ConfigGenUpdater{WithKustomize: s.withKustomize},
-			// sample,
+			&configgen.ConfigGenUpdater{},
 		); err != nil {
-			return fmt.Errorf("error scaffolding APIs: %v", err)
+			return err
 		}
+
+		if s.withKustomize {
+			sampleFileName := s.resource.Replacer().Replace("%[group]_%[version]_%[kind].yaml")
+			oldSamplePath := path.Join("config", "samples", sampleFileName)
+			newSamplePath := path.Join("samples", sampleFileName)
+			if err := mv(s.fs, oldSamplePath, newSamplePath); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func mv(fs machinery.Filesystem, oldPath, newPath string) error {
+	if _, err := fs.FS.Stat(oldPath); err == nil {
+		if dir := path.Dir(newPath); dir != "" {
+			if err = os.MkdirAll(dir, 0755); err != nil { //nolint:gosec
+				return err
+			}
+		}
+		if err = fs.FS.Rename(oldPath, newPath); err != nil {
+			return err
+		}
+	} else if errors.Is(err, os.ErrExist) {
+		// Debug log
+		fmt.Println("File does not exist:", oldPath)
+	} else {
+		return err
 	}
 
 	return nil

@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/internal/validation"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/config-gen/v1/scaffolds"
 )
 
 var _ plugin.InitSubcommand = &initSubcommand{}
@@ -45,16 +45,15 @@ type initSubcommand struct { //nolint:maligned
 }
 
 func (p *initSubcommand) UpdateMetadata(cliMeta plugin.CLIMetadata, subcmdMeta *plugin.SubcommandMetadata) {
-	subcmdMeta.Description = `Initialize a common project including the following files:
-  - a "PROJECT" file that stores project configuration
-  - several YAML files for project deployment under the "config" directory
+	subcmdMeta.Description = `Initialize a common project including several YAML files
+for project configuration with ` + "`" + `alpha config-gen` + "`" + `
 `
-	subcmdMeta.Examples = fmt.Sprintf(`  # Initialize a common project with your domain and name in copyright
-  %[1]s init --plugins common/v3 --domain example.org 
+	subcmdMeta.Examples = fmt.Sprintf(`  # Initialize a common project with a domain
+  %[1]s init --plugins config-gen.common/%[2]s --domain example.org 
 
   # Initialize a common project defining an specific project version
-  %[1]s init --plugins common/v3 --project-version 3
-`, cliMeta.CommandName)
+  %[1]s init --plugins config-gen.common/%[2]s --project-version 3
+`, cliMeta.CommandName, pluginVersion)
 }
 
 func (p *initSubcommand) BindFlags(fs *pflag.FlagSet) {
@@ -103,11 +102,10 @@ func (p *initSubcommand) InjectConfig(c config.Config) error {
 }
 
 func (p *initSubcommand) Scaffold(fs machinery.Filesystem) error {
-	scaffolder := scaffolds.NewInitScaffolder(p.config)
+	scaffolder := scaffolds.NewInitScaffolder(p.config,
+		filepath.Join("hack", "boilerplate.go.txt"),
+		p.pconfig.WithKustomize,
+	)
 	scaffolder.InjectFS(fs)
-	if err := scaffolder.Scaffold(); err != nil {
-		return err
-	}
-
-	return nil
+	return scaffolder.Scaffold()
 }

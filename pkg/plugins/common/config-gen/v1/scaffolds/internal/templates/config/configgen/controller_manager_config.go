@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Kubernetes Authors.
+Copyright 2020 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ limitations under the License.
 package configgen
 
 import (
-	"path/filepath"
-
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 )
 
@@ -29,18 +27,12 @@ type ControllerManagerConfig struct {
 	machinery.TemplateMixin
 	machinery.DomainMixin
 	machinery.RepositoryMixin
-
-	WithKustomize bool
 }
 
-// SetTemplateDefaults implements input.Template
+// SetTemplateDefaults implements machinery.Template
 func (f *ControllerManagerConfig) SetTemplateDefaults() error {
 	if f.Path == "" {
-		if f.WithKustomize {
-			f.Path = filepath.Join("config", "configgen", "controller_manager_config.yaml")
-		} else {
-			f.Path = "controller_manager_config.yaml"
-		}
+		f.Path = "controller_manager_config.yaml"
 	}
 
 	f.TemplateBody = controllerManagerConfigTemplate

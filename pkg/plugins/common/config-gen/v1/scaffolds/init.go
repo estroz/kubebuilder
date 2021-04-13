@@ -18,6 +18,7 @@ package scaffolds
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
@@ -39,40 +40,42 @@ const (
 var _ plugins.Scaffolder = &initScaffolder{}
 
 type initScaffolder struct {
-	config          config.Config
-	boilerplatePath string
-	license         string
-	owner           string
+	config config.Config
 
 	// fs is the filesystem that will be used by the scaffolder
 	fs machinery.Filesystem
 
+	boilerplatePath string
 	// Scaffold files with kustomize as the config-gen invoker, not kubebuilder.
 	withKustomize bool
 }
 
 // NewInitScaffolder returns a new Scaffolder for project initialization operations
-func NewInitScaffolder(config config.Config, license, owner string, withKustomize bool) plugins.Scaffolder {
+func NewInitScaffolder(config config.Config, bpPath string, withKustomize bool) plugins.Scaffolder {
 	return &initScaffolder{
-		config:        config,
-		license:       license,
-		owner:         owner,
-		withKustomize: withKustomize,
+		config:          config,
+		boilerplatePath: bpPath,
+		withKustomize:   withKustomize,
 	}
 }
 
 func (s *initScaffolder) InjectFS(fs machinery.Filesystem) { s.fs = fs }
 
 func (s *initScaffolder) Scaffold() error {
-	fmt.Println("Writing scaffold for you to edit...")
+	fmt.Println("Writing config-gen manifests for you to edit...")
 
-	scaffold := machinery.NewScaffold(s.fs,
-		machinery.WithConfig(s.config),
-	)
+	scaffold := machinery.NewScaffold(s.fs, machinery.WithConfig(s.config))
+
+	configGen := configgen.ConfigGen{WithKustomize: s.withKustomize}
+	cmConfig := configgen.ControllerManagerConfig{}
+	if s.withKustomize {
+		cmConfig.Path = filepath.Join("config", "configgen", "controller_manager_config.yaml")
+		configGen.Path = filepath.Join("config", "configgen", "kubebuilderconfiggen.yaml")
+	}
 
 	builders := []machinery.Builder{
-		&configgen.ConfigGen{WithKustomize: s.withKustomize},
-		&configgen.ControllerManagerConfig{WithKustomize: s.withKustomize},
+		&configGen,
+		&cmConfig,
 		&templates.Makefile{
 			WithKustomize:            s.withKustomize,
 			BoilerplatePath:          s.boilerplatePath,
@@ -89,5 +92,9 @@ func (s *initScaffolder) Scaffold() error {
 		)
 	}
 
-	return scaffold.Execute(builders...)
+	if err := scaffold.Execute(builders...); err != nil {
+		return err
+	}
+
+	return nil
 }

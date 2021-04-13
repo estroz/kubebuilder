@@ -17,8 +17,6 @@ limitations under the License.
 package v1
 
 import (
-	"fmt"
-
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
@@ -31,32 +29,12 @@ import (
 var _ plugin.CreateWebhookSubcommand = &createWebhookSubcommand{}
 
 type createWebhookSubcommand struct {
-	config config.Config
-	// For help text.
-	commandName string
-
+	config   config.Config
 	resource *resource.Resource
 }
 
-func (p *createWebhookSubcommand) UpdateMetadata(cliMeta plugin.CLIMetadata, subcmdMeta *plugin.SubcommandMetadata) {
-	p.commandName = cliMeta.CommandName
-
-	subcmdMeta.Description = `Scaffold a webhook for an API resource. You can choose to scaffold defaulting,
-validating and/or conversion webhooks.
-`
-	subcmdMeta.Examples = fmt.Sprintf(`  # Create defaulting and validating webhooks for Group: ship, Version: v1beta1
-  # and Kind: Frigate
-  %[1]s create webhook --group ship --version v1beta1 --kind Frigate --defaulting --programmatic-validation
-
-  # Create conversion webhook for Group: ship, Version: v1beta1
-  # and Kind: Frigate
-  %[1]s create webhook --group ship --version v1beta1 --kind Frigate --conversion
-`, cliMeta.CommandName)
-}
-
-func (p *createWebhookSubcommand) BindFlags(fs *pflag.FlagSet) {
-
-}
+func (p *createWebhookSubcommand) UpdateMetadata(plugin.CLIMetadata, *plugin.SubcommandMetadata) {}
+func (p *createWebhookSubcommand) BindFlags(fs *pflag.FlagSet)                                   {}
 
 func (p *createWebhookSubcommand) InjectConfig(c config.Config) error {
 	p.config = c
@@ -69,7 +47,5 @@ func (p *createWebhookSubcommand) InjectResource(res *resource.Resource) error {
 }
 
 func (p *createWebhookSubcommand) Scaffold(fs machinery.Filesystem) error {
-	scaffolder := scaffolds.NewWebhookScaffolder(p.config, p.resource)
-	scaffolder.InjectFS(fs)
-	return scaffolder.Scaffold()
+	return scaffolds.Scaffold(fs)
 }

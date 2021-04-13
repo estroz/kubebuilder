@@ -58,9 +58,7 @@ func (f *Makefile) SetTemplateDefaults() error {
 		f.Image = fmt.Sprintf("%s/%s:v0.1.0", f.Domain, f.ProjectName)
 	}
 
-	if f.IfExistsAction == 0 && f.IfExistsAction != machinery.SkipFile {
-		f.IfExistsAction = machinery.Error
-	}
+	f.IfExistsAction = machinery.OverwriteFile
 
 	return nil
 }

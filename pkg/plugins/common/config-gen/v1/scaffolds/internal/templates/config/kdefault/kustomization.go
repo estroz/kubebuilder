@@ -38,7 +38,7 @@ func (f *Kustomization) SetTemplateDefaults() error {
 
 	f.TemplateBody = kustomizationTemplate
 
-	f.IfExistsAction = machinery.Error
+	f.IfExistsAction = machinery.OverwriteFile
 
 	return nil
 }
