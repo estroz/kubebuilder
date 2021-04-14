@@ -115,11 +115,11 @@ function scaffold_test_project {
 build_kb
 
 # Project version 2 uses plugin go/v2 (default).
-scaffold_test_project project-v2 --project-version=2
-scaffold_test_project project-v2-multigroup --project-version=2
-scaffold_test_project project-v2-addon --project-version=3 --plugins="go/v2,declarative"
+# scaffold_test_project project-v2 --project-version=2
+# scaffold_test_project project-v2-multigroup --project-version=2
+# scaffold_test_project project-v2-addon --project-version=3 --plugins="go/v2,declarative"
 # Project version 3 (default) uses plugin go/v3 (default).
 scaffold_test_project project-v3
-scaffold_test_project project-v3-multigroup
-scaffold_test_project project-v3-addon --plugins="go/v3,declarative"
-scaffold_test_project project-v3-config --component-config
+# scaffold_test_project project-v3-multigroup
+# scaffold_test_project project-v3-addon --plugins="go/v3,declarative"
+# scaffold_test_project project-v3-config --component-config

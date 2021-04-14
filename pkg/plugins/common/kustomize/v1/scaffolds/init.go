@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds/internal/templates"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds/internal/templates/config/kdefault"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds/internal/templates/config/manager"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds/internal/templates/config/prometheus"
@@ -29,6 +30,9 @@ import (
 )
 
 const (
+	// KustomizeVersion is the kubernetes-sigs/kustomize version to be used in the project
+	KustomizeVersion = "v3.8.7"
+
 	imageName = "controller:latest"
 )
 
@@ -63,6 +67,7 @@ func (s *initScaffolder) Scaffold() error {
 	)
 
 	return scaffold.Execute(
+		&templates.MakefileUpdater{KustomizeVersion: KustomizeVersion},
 		&rbac.Kustomization{},
 		&rbac.AuthProxyRole{},
 		&rbac.AuthProxyRoleBinding{},

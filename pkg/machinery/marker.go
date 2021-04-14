@@ -25,9 +25,10 @@ import (
 const prefix = "+kubebuilder:scaffold:"
 
 var commentsByExt = map[string]string{
-	".go":   "//",
-	".yaml": "#",
-	".yml":  "#",
+	".go":      "//",
+	".yaml":    "#",
+	".yml":     "#",
+	"Makefile": "#",
 	// When adding additional file extensions, update also the NewMarkerFor documentation and error
 }
 
@@ -38,9 +39,12 @@ type Marker struct {
 }
 
 // NewMarkerFor creates a new marker customized for the specific file
-// Supported file extensions: .go, .yaml, .yml
+// Supported file extensions: .go, .yaml, .yml, Makefile
 func NewMarkerFor(path string, value string) Marker {
 	ext := filepath.Ext(path)
+	if strings.HasSuffix(path, "Makefile") {
+		_, ext = filepath.Split(path)
+	}
 	if comment, found := commentsByExt[ext]; found {
 		return Marker{comment, value}
 	}
